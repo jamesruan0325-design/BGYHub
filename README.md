@@ -60,8 +60,13 @@ Below is a real screenshot from the BGYHub Beta customer portal.
 ![BGYHub Usage Dashboard](0a93b13e-08b5-4de5-bfaf-db11610bbf7d.png)
 ## Quick Start
 
-Your BGYHub API endpoint:
+Your BGYHub API endpoint:### Claude Code
 
+Using Claude Code with BGYHub?
+
+👉 [Claude Code + BGYHub Quick Start](docs/claude-code.md)
+
+Connect Claude Code to BGYHub using an Anthropic-compatible API endpoint in just a few minutes.
 https://api.bgyhub.com/v1
 
 After receiving your Beta API key, you can connect supported tools and
