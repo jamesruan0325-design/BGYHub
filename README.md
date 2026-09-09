@@ -53,6 +53,11 @@ Every BGYHub account includes a developer portal where you can monitor:
 
 No guessing where your API credits went.
 
+### Real Usage Dashboard
+
+Below is a real screenshot from the BGYHub Beta customer portal.
+
+![BGYHub Usage Dashboard](0a93b13e-08b5-4de5-bfaf-db11610bbf7d.png)
 ## Quick Start
 
 Your BGYHub API endpoint:
