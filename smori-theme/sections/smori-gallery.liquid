@@ -1,0 +1,204 @@
+<section class="gallery" id="gallery">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">{{ section.settings.section_label }}</span>
+      <h2 class="section-title">{{ section.settings.heading }}</h2>
+      <p class="section-description">{{ section.settings.description }}</p>
+    </div>
+
+    <div class="gallery-grid">
+      {% if section.blocks.size > 0 %}
+        {% for block in section.blocks %}
+          <div class="gallery-item gallery-{{ block.settings.layout }}" {{ block.shopify_attributes }}>
+            <div class="gallery-image" style="{% if block.settings.image != blank %}background-image: url('{{ block.settings.image | image_url: width: 960 }}');{% else %}background: linear-gradient(135deg, {{ block.settings.fallback_gradient }} 0%, #1a1a2e 100%);{% endif %}">
+              <div class="gallery-overlay">
+                <span class="gallery-room">{{ block.settings.room_type }}</span>
+                <h3 class="gallery-title">{{ block.settings.title }}</h3>
+                <p class="gallery-subtitle">{{ block.settings.subtitle }}</p>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="gallery-item gallery-tall">
+          <div class="gallery-image" style="background: linear-gradient(135deg, #d4c5b0 0%, #1a1a2e 100%);">
+            <div class="gallery-overlay">
+              <span class="gallery-room">Living Room</span>
+              <h3 class="gallery-title">Modern Minimalism</h3>
+              <p class="gallery-subtitle">Silhouette Sheers in Pearl White</p>
+            </div>
+          </div>
+        </div>
+        <div class="gallery-item gallery-normal">
+          <div class="gallery-image" style="background: linear-gradient(135deg, #a89882 0%, #1a1a2e 100%);">
+            <div class="gallery-overlay">
+              <span class="gallery-room">Master Bedroom</span>
+              <h3 class="gallery-title">Serene Retreat</h3>
+              <p class="gallery-subtitle">Duette Honeycomb in Midnight</p>
+            </div>
+          </div>
+        </div>
+        <div class="gallery-item gallery-normal">
+          <div class="gallery-image" style="background: linear-gradient(135deg, #c5b8a8 0%, #1a1a2e 100%);">
+            <div class="gallery-overlay">
+              <span class="gallery-room">Dining Room</span>
+              <h3 class="gallery-title">Elegant Entertaining</h3>
+              <p class="gallery-subtitle">Pirouette Shadings in Champagne</p>
+            </div>
+          </div>
+        </div>
+        <div class="gallery-item gallery-wide">
+          <div class="gallery-image" style="background: linear-gradient(135deg, #8b7d6b 0%, #1a1a2e 100%);">
+            <div class="gallery-overlay">
+              <span class="gallery-room">Home Office</span>
+              <h3 class="gallery-title">Focused Luxury</h3>
+              <p class="gallery-subtitle">Designer Roller in Graphite</p>
+            </div>
+          </div>
+        </div>
+        <div class="gallery-item gallery-normal">
+          <div class="gallery-image" style="background: linear-gradient(135deg, #b8a898 0%, #1a1a2e 100%);">
+            <div class="gallery-overlay">
+              <span class="gallery-room">Kitchen</span>
+              <h3 class="gallery-title">Culinary Light</h3>
+              <p class="gallery-subtitle">Vignette Roman Shades in Linen</p>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Gallery",
+  "settings": [
+    {
+      "type": "text",
+      "id": "section_label",
+      "label": "Section Label",
+      "default": "Inspiration"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Design Gallery"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "Description",
+      "default": "Explore how our window treatments transform real spaces, creating the perfect ambiance for every room."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "gallery_item",
+      "name": "Gallery Item",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image",
+          "info": "Leave empty to show a gradient fallback."
+        },
+        {
+          "type": "text",
+          "id": "room_type",
+          "label": "Room Type",
+          "default": "Living Room"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Gallery Item"
+        },
+        {
+          "type": "text",
+          "id": "subtitle",
+          "label": "Subtitle",
+          "default": "Window treatment description"
+        },
+        {
+          "type": "select",
+          "id": "layout",
+          "label": "Layout Size",
+          "options": [
+            { "value": "normal", "label": "Normal" },
+            { "value": "tall", "label": "Tall" },
+            { "value": "wide", "label": "Wide" }
+          ],
+          "default": "normal"
+        },
+        {
+          "type": "color",
+          "id": "fallback_gradient",
+          "label": "Fallback Gradient Color",
+          "default": "#d4c5b0"
+        }
+      ]
+    }
+  ],
+  "max_blocks": 6,
+  "presets": [
+    {
+      "name": "Gallery",
+      "blocks": [
+        {
+          "type": "gallery_item",
+          "settings": {
+            "room_type": "Living Room",
+            "title": "Modern Minimalism",
+            "subtitle": "Silhouette Sheers in Pearl White",
+            "layout": "tall",
+            "fallback_gradient": "#d4c5b0"
+          }
+        },
+        {
+          "type": "gallery_item",
+          "settings": {
+            "room_type": "Master Bedroom",
+            "title": "Serene Retreat",
+            "subtitle": "Duette Honeycomb in Midnight",
+            "layout": "normal",
+            "fallback_gradient": "#a89882"
+          }
+        },
+        {
+          "type": "gallery_item",
+          "settings": {
+            "room_type": "Dining Room",
+            "title": "Elegant Entertaining",
+            "subtitle": "Pirouette Shadings in Champagne",
+            "layout": "normal",
+            "fallback_gradient": "#c5b8a8"
+          }
+        },
+        {
+          "type": "gallery_item",
+          "settings": {
+            "room_type": "Home Office",
+            "title": "Focused Luxury",
+            "subtitle": "Designer Roller in Graphite",
+            "layout": "wide",
+            "fallback_gradient": "#8b7d6b"
+          }
+        },
+        {
+          "type": "gallery_item",
+          "settings": {
+            "room_type": "Kitchen",
+            "title": "Culinary Light",
+            "subtitle": "Vignette Roman Shades in Linen",
+            "layout": "normal",
+            "fallback_gradient": "#b8a898"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

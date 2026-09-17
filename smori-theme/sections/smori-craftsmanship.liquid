@@ -1,0 +1,168 @@
+<section class="craftsmanship" id="craftsmanship">
+  <div class="container">
+    <div class="craftsmanship-layout">
+      <div class="craftsmanship-content">
+        <span class="section-label">{{ section.settings.section_label }}</span>
+        <h2 class="section-title">{{ section.settings.heading }}</h2>
+
+        <div class="process-steps">
+          {% if section.blocks.size > 0 %}
+            {% for block in section.blocks %}
+              <div class="process-step" {{ block.shopify_attributes }}>
+                <span class="step-number">{{ block.settings.step_number }}</span>
+                <div class="step-content">
+                  <h3 class="step-title">{{ block.settings.title }}</h3>
+                  <p class="step-description">{{ block.settings.description }}</p>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="process-step">
+              <span class="step-number">01</span>
+              <div class="step-content">
+                <h3 class="step-title">In-Home Consultation</h3>
+                <p class="step-description">Our design experts visit your space to understand your aesthetic, lifestyle, and functional needs — ensuring every recommendation is perfectly tailored.</p>
+              </div>
+            </div>
+            <div class="process-step">
+              <span class="step-number">02</span>
+              <div class="step-content">
+                <h3 class="step-title">Fabric Selection</h3>
+                <p class="step-description">Explore over 1,200 premium fabrics, textures, and opacities. See how each interacts with your natural light and existing decor.</p>
+              </div>
+            </div>
+            <div class="process-step">
+              <span class="step-number">03</span>
+              <div class="step-content">
+                <h3 class="step-title">Precision Tailoring</h3>
+                <p class="step-description">Every treatment is custom-measured and manufactured to exact specifications, ensuring a flawless fit for every window.</p>
+              </div>
+            </div>
+            <div class="process-step">
+              <span class="step-number">04</span>
+              <div class="step-content">
+                <h3 class="step-title">White-Glove Installation</h3>
+                <p class="step-description">Our certified installers handle everything with meticulous care, leaving your space immaculate and your windows transformed.</p>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="craftsmanship-images">
+        <div class="craft-image craft-image-1">
+          {% if section.settings.image_1 != blank %}
+            <img src="{{ section.settings.image_1 | image_url: width: 800 }}" alt="{{ section.settings.heading }}" loading="lazy">
+          {% else %}
+            <div class="craft-image-placeholder" style="background: linear-gradient(135deg, #d4c5b0 0%, #8b7d6b 100%);"></div>
+          {% endif %}
+        </div>
+        <div class="craft-image craft-image-2">
+          {% if section.settings.image_2 != blank %}
+            <img src="{{ section.settings.image_2 | image_url: width: 800 }}" alt="{{ section.settings.heading }}" loading="lazy">
+          {% else %}
+            <div class="craft-image-placeholder" style="background: linear-gradient(135deg, #a89882 0%, #6b5d4f 100%);"></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Craftsmanship",
+  "settings": [
+    {
+      "type": "text",
+      "id": "section_label",
+      "label": "Section Label",
+      "default": "The SMORI Difference"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "From Vision to Reality"
+    },
+    {
+      "type": "image_picker",
+      "id": "image_1",
+      "label": "Image 1",
+      "info": "Leave empty to show a gradient placeholder."
+    },
+    {
+      "type": "image_picker",
+      "id": "image_2",
+      "label": "Image 2",
+      "info": "Leave empty to show a gradient placeholder."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "step",
+      "name": "Process Step",
+      "settings": [
+        {
+          "type": "text",
+          "id": "step_number",
+          "label": "Step Number",
+          "default": "01"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Step Title"
+        },
+        {
+          "type": "textarea",
+          "id": "description",
+          "label": "Description",
+          "default": "Step description goes here."
+        }
+      ]
+    }
+  ],
+  "max_blocks": 4,
+  "presets": [
+    {
+      "name": "Craftsmanship",
+      "blocks": [
+        {
+          "type": "step",
+          "settings": {
+            "step_number": "01",
+            "title": "In-Home Consultation",
+            "description": "Our design experts visit your space to understand your aesthetic, lifestyle, and functional needs — ensuring every recommendation is perfectly tailored."
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "step_number": "02",
+            "title": "Fabric Selection",
+            "description": "Explore over 1,200 premium fabrics, textures, and opacities. See how each interacts with your natural light and existing decor."
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "step_number": "03",
+            "title": "Precision Tailoring",
+            "description": "Every treatment is custom-measured and manufactured to exact specifications, ensuring a flawless fit for every window."
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "step_number": "04",
+            "title": "White-Glove Installation",
+            "description": "Our certified installers handle everything with meticulous care, leaving your space immaculate and your windows transformed."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

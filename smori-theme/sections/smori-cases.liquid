@@ -1,0 +1,299 @@
+{{ 'smori-cases.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'smori-cases.js' | asset_url }}" defer></script>
+
+{%- liquid
+  assign lang = request.locale.iso_code | slice: 0, 2
+  assign type = section.settings.metaobject_type | default: 'installation_case'
+  assign entries = metaobjects[type].values
+  assign entry_count = 0
+  if entries
+    assign entry_count = entries.size
+  endif
+  assign source = 'blocks'
+  if entry_count > 0
+    assign source = 'metaobjects'
+  endif
+  assign known_categories = 'sheer,blackout,signature,motorized,drapery,shutters,commercial' | split: ','
+  assign present = ''
+  assign max_cases = section.settings.max_cases
+  assign rendered = 0
+-%}
+
+<section class="cases{% if section.settings.page_mode %} cases--page{% endif %}" id="cases" data-smori-cases>
+  <div class="container">
+    <div class="section-header">
+      {%- if section.settings.section_label != blank -%}
+        <span class="section-label">{{ section.settings.section_label }}</span>
+      {%- endif -%}
+      <h2 class="section-title">{{ section.settings.heading }}</h2>
+      {%- if section.settings.description != blank -%}
+        <p class="section-description">{{ section.settings.description }}</p>
+      {%- endif -%}
+    </div>
+
+    {%- comment -%} Work out which categories are present so the filter bar only shows real ones {%- endcomment -%}
+    {%- if source == 'metaobjects' -%}
+      {%- for entry in entries -%}
+        {%- if section.settings.featured_only and entry.featured.value != true -%}{%- continue -%}{%- endif -%}
+        {%- assign present = present | append: entry.category.value | append: ',' -%}
+      {%- endfor -%}
+    {%- else -%}
+      {%- for block in section.blocks -%}
+        {%- assign present = present | append: block.settings.category | append: ',' -%}
+      {%- endfor -%}
+    {%- endif -%}
+
+    {%- if section.settings.show_filters and present != blank -%}
+      <div class="cases-filters" role="tablist">
+        <button type="button" class="tab-btn active" data-case-filter="all">{{ 'smori.cases.all' | t }}</button>
+        {%- for cat in known_categories -%}
+          {%- assign needle = cat | append: ',' -%}
+          {%- if present contains needle -%}
+            {%- assign label_key = 'smori.cases.categories.' | append: cat -%}
+            <button type="button" class="tab-btn" data-case-filter="{{ cat }}">{{ label_key | t }}</button>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    <div class="cases-grid">
+      {%- if source == 'metaobjects' -%}
+        {%- for entry in entries -%}
+          {%- if section.settings.featured_only and entry.featured.value != true -%}{%- continue -%}{%- endif -%}
+          {%- if rendered >= max_cases -%}{%- break -%}{%- endif -%}
+          {%- assign rendered = rendered | plus: 1 -%}
+          {%- liquid
+            assign c_title = entry.title.value
+            assign c_summary = entry.summary.value
+            assign c_room = entry.room.value
+            if lang == 'zh'
+              if entry.title_zh.value != blank
+                assign c_title = entry.title_zh.value
+              endif
+              if entry.summary_zh.value != blank
+                assign c_summary = entry.summary_zh.value
+              endif
+              if entry.room_zh.value != blank
+                assign c_room = entry.room_zh.value
+              endif
+            endif
+            assign c_product = entry.product_name.value
+            if c_product == blank and entry.product.value
+              assign c_product = entry.product.value.title
+            endif
+            assign photos = entry.photos.value
+            assign photo_count = 0
+            if photos
+              assign photo_count = photos.size
+            endif
+            assign cover = entry.cover.value
+            if cover == blank and photo_count > 0
+              assign cover = photos.first
+            endif
+          -%}
+          {%- render 'smori-case-card',
+            card_title: c_title,
+            card_summary: c_summary,
+            card_category: entry.category.value,
+            card_room: c_room,
+            card_location: entry.location.value,
+            card_product_name: c_product,
+            card_image: cover,
+            card_image_alt: c_title,
+            card_url: entry.system.url,
+            card_photo_count: photo_count
+          -%}
+        {%- endfor -%}
+      {%- else -%}
+        {%- for block in section.blocks -%}
+          {%- if rendered >= max_cases -%}{%- break -%}{%- endif -%}
+          {%- assign rendered = rendered | plus: 1 -%}
+          {%- liquid
+            assign c_title = block.settings.title
+            assign c_summary = block.settings.summary
+            if lang == 'zh'
+              if block.settings.title_zh != blank
+                assign c_title = block.settings.title_zh
+              endif
+              if block.settings.summary_zh != blank
+                assign c_summary = block.settings.summary_zh
+              endif
+            endif
+            assign photo_count = 0
+            if block.settings.image != blank
+              assign photo_count = photo_count | plus: 1
+            endif
+            if block.settings.image_2 != blank
+              assign photo_count = photo_count | plus: 1
+            endif
+            if block.settings.image_3 != blank
+              assign photo_count = photo_count | plus: 1
+            endif
+          -%}
+          {%- render 'smori-case-card',
+            card_title: c_title,
+            card_summary: c_summary,
+            card_category: block.settings.category,
+            card_room: block.settings.room,
+            card_location: block.settings.location,
+            card_product_name: block.settings.product_name,
+            card_image: block.settings.image,
+            card_image_alt: c_title,
+            card_url: block.settings.link,
+            card_photo_count: photo_count,
+            card_attrs: block.shopify_attributes
+          -%}
+        {%- endfor -%}
+      {%- endif -%}
+    </div>
+
+    {%- if rendered == 0 and request.design_mode -%}
+      <div class="cases-empty">
+        <strong>{{ 'smori.cases.empty_title' | t }}</strong><br>
+        {{ 'smori.cases.empty_text' | t }}
+      </div>
+    {%- endif -%}
+
+    {%- if section.settings.show_view_all and section.settings.view_all_url != blank and rendered > 0 -%}
+      <div class="cases-footer">
+        <a href="{{ section.settings.view_all_url }}" class="btn btn-secondary">{{ section.settings.view_all_text | default: 'View All Projects' }}</a>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Installation Cases",
+  "tag": "div",
+  "class": "smori-cases-section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Cases are read from the 'installation_case' metaobject (Content > Metaobjects in Shopify admin). If no entries exist yet, the manual blocks below are shown instead."
+    },
+    {
+      "type": "text",
+      "id": "section_label",
+      "label": "Section Label",
+      "default": "Our Work"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Recent Installations"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "Description",
+      "default": "Real homes across Southern California, dressed by SMORI. Browse by product to see how each treatment lives in a finished space."
+    },
+    {
+      "type": "header",
+      "content": "Data source"
+    },
+    {
+      "type": "text",
+      "id": "metaobject_type",
+      "label": "Metaobject type",
+      "default": "installation_case",
+      "info": "Leave as is unless the metaobject definition was created with a different type handle."
+    },
+    {
+      "type": "checkbox",
+      "id": "featured_only",
+      "label": "Show featured cases only",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "max_cases",
+      "label": "Maximum cases to show",
+      "min": 3,
+      "max": 48,
+      "step": 3,
+      "default": 6
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filters",
+      "label": "Show category filter",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "page_mode",
+      "label": "Full-page layout (extra top spacing under the fixed navbar)",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "View all link"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_view_all",
+      "label": "Show 'view all' button",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "view_all_text",
+      "label": "Button text",
+      "default": "View All Projects"
+    },
+    {
+      "type": "url",
+      "id": "view_all_url",
+      "label": "Button link",
+      "info": "Usually the page that uses the 'installation-cases' template, e.g. /pages/installations"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "case",
+      "name": "Manual case",
+      "settings": [
+        {
+          "type": "paragraph",
+          "content": "Only used when there are no metaobject entries yet."
+        },
+        { "type": "image_picker", "id": "image", "label": "Cover photo" },
+        { "type": "image_picker", "id": "image_2", "label": "Photo 2" },
+        { "type": "image_picker", "id": "image_3", "label": "Photo 3" },
+        { "type": "text", "id": "title", "label": "Title (EN)", "default": "Coastal Living Room" },
+        { "type": "text", "id": "title_zh", "label": "标题（中文）" },
+        {
+          "type": "select",
+          "id": "category",
+          "label": "Product category",
+          "options": [
+            { "value": "sheer", "label": "Sheer & Light" },
+            { "value": "blackout", "label": "Blackout" },
+            { "value": "signature", "label": "Signature" },
+            { "value": "motorized", "label": "Motorized" },
+            { "value": "drapery", "label": "Drapery" },
+            { "value": "shutters", "label": "Shutters" },
+            { "value": "commercial", "label": "Commercial" }
+          ],
+          "default": "sheer"
+        },
+        { "type": "text", "id": "product_name", "label": "Product", "default": "Silhouette" },
+        { "type": "text", "id": "room", "label": "Room", "default": "Living Room" },
+        { "type": "text", "id": "location", "label": "Location", "default": "Irvine, CA" },
+        { "type": "textarea", "id": "summary", "label": "Summary (EN)" },
+        { "type": "textarea", "id": "summary_zh", "label": "简介（中文）" },
+        { "type": "url", "id": "link", "label": "Link (optional)" }
+      ]
+    }
+  ],
+  "max_blocks": 24,
+  "presets": [
+    {
+      "name": "Installation Cases"
+    }
+  ]
+}
+{% endschema %}

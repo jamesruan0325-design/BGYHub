@@ -1,0 +1,284 @@
+{{ 'smori-cases.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'smori-cases.js' | asset_url }}" defer></script>
+
+{%- liquid
+  assign lang = request.locale.iso_code | slice: 0, 2
+  assign entry = metaobject
+
+  assign title = entry.title.value
+  assign subtitle = entry.subtitle.value
+  assign summary = entry.summary.value
+  assign room = entry.room.value
+  assign body = entry.description
+  assign body_alt = entry.description_zh
+  assign alt_label = 'smori.cases.lang_zh' | t
+  if lang == 'zh'
+    if entry.title_zh.value != blank
+      assign title = entry.title_zh.value
+    endif
+    if entry.subtitle_zh.value != blank
+      assign subtitle = entry.subtitle_zh.value
+    endif
+    if entry.summary_zh.value != blank
+      assign summary = entry.summary_zh.value
+    endif
+    if entry.room_zh.value != blank
+      assign room = entry.room_zh.value
+    endif
+    if entry.description_zh.value != blank
+      assign body = entry.description_zh
+      assign body_alt = entry.description
+      assign alt_label = 'smori.cases.lang_en' | t
+    endif
+  endif
+
+  assign category = entry.category.value
+  assign category_label = category
+  if category != blank
+    assign category_key = 'smori.cases.categories.' | append: category
+    assign translated = category_key | t
+    unless translated contains 'translation missing'
+      assign category_label = translated
+    endunless
+  endif
+
+  assign product_ref = entry.product.value
+  assign product_name = entry.product_name.value
+  if product_name == blank and product_ref
+    assign product_name = product_ref.title
+  endif
+
+  assign photos = entry.photos.value
+  assign photo_count = 0
+  if photos
+    assign photo_count = photos.size
+  endif
+  assign cover = entry.cover.value
+  assign group = 'case-' | append: entry.system.id
+-%}
+
+<section class="case-detail" id="case-{{ entry.system.handle }}">
+  <div class="container">
+    {%- if section.settings.all_cases_url != blank -%}
+      <nav class="case-breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ section.settings.all_cases_url }}">&larr; {{ 'smori.cases.back' | t }}</a>
+      </nav>
+    {%- endif -%}
+
+    <header class="case-detail-header">
+      <span class="section-label">{{ section.settings.section_label }}</span>
+      <h1 class="case-detail-title">{{ title }}</h1>
+      {%- if subtitle != blank -%}
+        <p class="case-detail-subtitle">{{ subtitle }}</p>
+      {%- endif -%}
+      {%- if summary != blank -%}
+        <p class="case-detail-summary">{{ summary }}</p>
+      {%- endif -%}
+    </header>
+
+    {%- comment -%} Photo gallery: cover first, then the photo list. All of them join one lightbox group. {%- endcomment -%}
+    {%- assign shown = 0 -%}
+    {%- assign max_visible = 5 -%}
+    {%- if cover != blank or photo_count > 0 -%}
+      <div class="case-gallery">
+        {%- if cover != blank -%}
+          {%- assign img = cover -%}
+          {%- if cover.preview_image -%}{%- assign img = cover.preview_image -%}{%- endif -%}
+          <a class="case-photo case-photo--main" href="{{ img | image_url: width: 2000 }}" data-smori-lightbox="{{ group }}" data-src="{{ img | image_url: width: 2000 }}" data-caption="{{ title | escape }}">
+            {{ img | image_url: width: 1400 | image_tag: loading: 'eager', widths: '600, 900, 1400', sizes: '(max-width: 992px) 100vw, 60vw', alt: title }}
+          </a>
+          {%- assign shown = shown | plus: 1 -%}
+        {%- endif -%}
+        {%- for photo in photos -%}
+          {%- if cover != blank and photo.id == cover.id -%}{%- continue -%}{%- endif -%}
+          {%- assign img = photo -%}
+          {%- if photo.preview_image -%}{%- assign img = photo.preview_image -%}{%- endif -%}
+          {%- assign shown = shown | plus: 1 -%}
+          {%- assign remaining = photo_count | minus: forloop.index -%}
+          {%- if shown <= max_visible -%}
+            <a class="case-photo{% if shown == 1 %} case-photo--main{% endif %}{% if shown == max_visible and remaining > 0 %} case-photo--more{% endif %}" href="{{ img | image_url: width: 2000 }}" data-smori-lightbox="{{ group }}" data-src="{{ img | image_url: width: 2000 }}" data-caption="{{ img.alt | default: title | escape }}">
+              {{ img | image_url: width: 900 | image_tag: loading: 'lazy', widths: '400, 600, 900', sizes: '(max-width: 992px) 50vw, 30vw', alt: img.alt }}
+              {%- if shown == max_visible and remaining > 0 -%}<span>+{{ remaining }}</span>{%- endif -%}
+            </a>
+          {%- else -%}
+            <a hidden href="{{ img | image_url: width: 2000 }}" data-smori-lightbox="{{ group }}" data-src="{{ img | image_url: width: 2000 }}" data-caption="{{ img.alt | default: title | escape }}"></a>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    <div class="case-detail-layout">
+      <div class="case-content">
+        {%- if body.value != blank -%}
+          {{ body | metafield_tag }}
+        {%- endif -%}
+        {%- if section.settings.show_both_languages and body_alt.value != blank -%}
+          <div class="case-content--alt">
+            <span class="case-lang-label">{{ alt_label }}</span>
+            {{ body_alt | metafield_tag }}
+          </div>
+        {%- endif -%}
+      </div>
+
+      <aside class="case-aside">
+        <div class="case-facts">
+          <h3>{{ 'smori.cases.details' | t }}</h3>
+          {%- if category_label != blank -%}
+            <div class="case-fact"><small>{{ 'smori.cases.category' | t }}</small><span>{{ category_label }}</span></div>
+          {%- endif -%}
+          {%- if product_name != blank -%}
+            <div class="case-fact"><small>{{ 'smori.cases.product' | t }}</small>
+              {%- if product_ref -%}<a href="{{ product_ref.url }}">{{ product_name }}</a>{%- else -%}<span>{{ product_name }}</span>{%- endif -%}
+            </div>
+          {%- endif -%}
+          {%- if room != blank -%}
+            <div class="case-fact"><small>{{ 'smori.cases.room' | t }}</small><span>{{ room }}</span></div>
+          {%- endif -%}
+          {%- if entry.location.value != blank -%}
+            <div class="case-fact"><small>{{ 'smori.cases.location' | t }}</small><span>{{ entry.location.value }}</span></div>
+          {%- endif -%}
+          {%- if entry.installed_on.value != blank -%}
+            <div class="case-fact"><small>{{ 'smori.cases.installed' | t }}</small><span>{{ entry.installed_on.value | date: '%B %Y' }}</span></div>
+          {%- endif -%}
+        </div>
+
+        {%- if section.settings.cta_button_text != blank -%}
+          <div class="case-cta">
+            <h4>{{ section.settings.cta_heading }}</h4>
+            <p>{{ section.settings.cta_text }}</p>
+            <a href="{{ section.settings.cta_url | default: '#contact' }}" class="btn btn-primary">{{ section.settings.cta_button_text }}</a>
+          </div>
+        {%- endif -%}
+      </aside>
+    </div>
+  </div>
+</section>
+
+{%- comment -%} Related cases: same category, excluding this entry {%- endcomment -%}
+{%- if section.settings.show_related -%}
+  {%- assign related_count = 0 -%}
+  {%- capture related_html -%}
+    {%- for other in metaobjects[entry.system.type].values -%}
+      {%- if other.system.id == entry.system.id -%}{%- continue -%}{%- endif -%}
+      {%- if category != blank and other.category.value != category -%}{%- continue -%}{%- endif -%}
+      {%- if related_count >= 3 -%}{%- break -%}{%- endif -%}
+      {%- assign related_count = related_count | plus: 1 -%}
+      {%- liquid
+        assign o_title = other.title.value
+        assign o_summary = other.summary.value
+        assign o_room = other.room.value
+        if lang == 'zh'
+          if other.title_zh.value != blank
+            assign o_title = other.title_zh.value
+          endif
+          if other.summary_zh.value != blank
+            assign o_summary = other.summary_zh.value
+          endif
+          if other.room_zh.value != blank
+            assign o_room = other.room_zh.value
+          endif
+        endif
+        assign o_product = other.product_name.value
+        if o_product == blank and other.product.value
+          assign o_product = other.product.value.title
+        endif
+        assign o_photos = other.photos.value
+        assign o_count = 0
+        if o_photos
+          assign o_count = o_photos.size
+        endif
+        assign o_cover = other.cover.value
+        if o_cover == blank and o_count > 0
+          assign o_cover = o_photos.first
+        endif
+      -%}
+      {%- render 'smori-case-card',
+        card_title: o_title,
+        card_summary: o_summary,
+        card_category: other.category.value,
+        card_room: o_room,
+        card_location: other.location.value,
+        card_product_name: o_product,
+        card_image: o_cover,
+        card_image_alt: o_title,
+        card_url: other.system.url,
+        card_photo_count: o_count
+      -%}
+    {%- endfor -%}
+  {%- endcapture -%}
+  {%- if related_count > 0 -%}
+    <section class="case-related">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-label">{{ section.settings.section_label }}</span>
+          <h2 class="section-title">{{ 'smori.cases.more' | t }}</h2>
+        </div>
+        <div class="cases-grid">{{ related_html }}</div>
+      </div>
+    </section>
+  {%- endif -%}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Installation Case Detail",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Renders one 'installation_case' metaobject entry. Use this section only in templates/metaobject/installation_case.json."
+    },
+    {
+      "type": "text",
+      "id": "section_label",
+      "label": "Section Label",
+      "default": "Installation"
+    },
+    {
+      "type": "url",
+      "id": "all_cases_url",
+      "label": "'All installations' link",
+      "info": "Usually /pages/installations"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_both_languages",
+      "label": "Also show the other language's description below",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_related",
+      "label": "Show related cases (same category)",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Call to action"
+    },
+    {
+      "type": "text",
+      "id": "cta_heading",
+      "label": "Heading",
+      "default": "Love this look?"
+    },
+    {
+      "type": "textarea",
+      "id": "cta_text",
+      "label": "Text",
+      "default": "Book a complimentary in-home measurement and our designers will bring fabric samples to your space."
+    },
+    {
+      "type": "text",
+      "id": "cta_button_text",
+      "label": "Button text",
+      "default": "Book a Free Measurement"
+    },
+    {
+      "type": "url",
+      "id": "cta_url",
+      "label": "Button link",
+      "info": "Leave empty to scroll to the contact form on this page."
+    }
+  ]
+}
+{% endschema %}

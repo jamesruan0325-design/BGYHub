@@ -1,0 +1,354 @@
+<section class="collections" id="collections">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label">{{ section.settings.section_label }}</span>
+      <h2 class="section-title">{{ section.settings.heading }}</h2>
+      <p class="section-description">{{ section.settings.description }}</p>
+    </div>
+
+    <div class="collection-tabs">
+      <button class="tab-btn active" data-filter="all">All</button>
+      <button class="tab-btn" data-filter="sheer">Sheer & Light</button>
+      <button class="tab-btn" data-filter="blackout">Blackout</button>
+      <button class="tab-btn" data-filter="signature">Signature</button>
+      <button class="tab-btn" data-filter="motorized">Motorized</button>
+    </div>
+
+    <div class="products-grid">
+      {% if section.blocks.size > 0 %}
+        {% for block in section.blocks %}
+          <div class="product-card" data-category="{{ block.settings.category }}" {{ block.shopify_attributes }}>
+            <div class="product-visual">
+              <div class="product-swatch" style="{% if block.settings.product_image != blank %}background-image: url('{{ block.settings.product_image | image_url: width: 960 }}');{% elsif block.settings.external_image_url != blank %}background-image: url('{{ block.settings.external_image_url }}');{% else %}background-color: {{ block.settings.accent_color }};{% endif %} background-size: cover; background-position: center;">
+              </div>
+              {% if block.settings.product_tag != blank %}
+                <span class="product-tag">{{ block.settings.product_tag }}</span>
+              {% endif %}
+              <div class="product-hover-info">
+                <a href="{{ block.settings.product_url }}"><span>Explore</span></a>
+              </div>
+            </div>
+            <div class="product-details">
+              <h3>{{ block.settings.product_name }}</h3>
+              <p class="product-subtitle">{{ block.settings.product_subtitle }}</p>
+              <p class="product-description">{{ block.settings.product_description }}</p>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="product-card" data-category="sheer">
+          <div class="product-visual">
+            <div class="product-swatch" style="background-image: url('https://cdn.sanity.io/images/e1syw5oe/~production/57b82591b30d27e34873da3e3a425a4ce16a1d6b-2050x1025.jpg'); background-size: cover; background-position: center;"></div>
+            <span class="product-tag">Best Seller</span>
+            <div class="product-hover-info"><span>Explore</span></div>
+          </div>
+          <div class="product-details">
+            <h3>Silhouette</h3>
+            <p class="product-subtitle">Sheer Shadings</p>
+            <p class="product-description">Signature S-shaped vanes float between two sheers, offering a perfect balance of light, privacy, and UV protection.</p>
+          </div>
+        </div>
+        <div class="product-card" data-category="sheer">
+          <div class="product-visual">
+            <div class="product-swatch" style="background-image: url('https://cdn.sanity.io/images/e1syw5oe/~production/316e83cc93de6b172e3da77e203444da3d6f9cfe-4000x2666.png?w=960&h=640'); background-size: cover; background-position: center;"></div>
+            <div class="product-hover-info"><span>Explore</span></div>
+          </div>
+          <div class="product-details">
+            <h3>Luminette</h3>
+            <p class="product-subtitle">Privacy Sheers</p>
+            <p class="product-description">Vertical fabric vanes rotate within a sheer for precise light control, perfect for wide windows and sliding doors.</p>
+          </div>
+        </div>
+        <div class="product-card" data-category="blackout">
+          <div class="product-visual">
+            <div class="product-swatch" style="background-image: url('https://cdn.sanity.io/images/e1syw5oe/~production/2ea7fd1f8d5417b071e9460f9dd8e8a942b504ab-2050x1025.jpg'); background-size: cover; background-position: center;"></div>
+            <span class="product-tag">Energy Efficient</span>
+            <div class="product-hover-info"><span>Explore</span></div>
+          </div>
+          <div class="product-details">
+            <h3>Duette</h3>
+            <p class="product-subtitle">Honeycomb Shades</p>
+            <p class="product-description">Award-winning cellular construction traps air for superior insulation, reducing energy costs while providing complete light control.</p>
+          </div>
+        </div>
+        <div class="product-card" data-category="sheer">
+          <div class="product-visual">
+            <div class="product-swatch" style="background-image: url('https://cdn.sanity.io/images/e1syw5oe/~production/20d6372243cd3d5be6de9f8efe32e9281ed60534-1000x500.webp?w=960&h=480'); background-size: cover; background-position: center;"></div>
+            <span class="product-tag">Signature</span>
+            <div class="product-hover-info"><span>Explore</span></div>
+          </div>
+          <div class="product-details">
+            <h3>Pirouette</h3>
+            <p class="product-subtitle">Shadings</p>
+            <p class="product-description">Soft horizontal fabric vanes on a single sheer backing that flatten for a clean look or open for filtered light.</p>
+          </div>
+        </div>
+        <div class="product-card" data-category="signature">
+          <div class="product-visual">
+            <div class="product-swatch" style="background-image: url('https://cdn.sanity.io/images/e1syw5oe/~production/5916eca247751b15d9e983b349187aec3c02a440-1025x513.jpg'); background-size: cover; background-position: center;"></div>
+            <div class="product-hover-info"><span>Explore</span></div>
+          </div>
+          <div class="product-details">
+            <h3>Vignette</h3>
+            <p class="product-subtitle">Modern Roman Shades</p>
+            <p class="product-description">Clean, consistent folds with no exposed rear cords for a tailored look. Available in flat and rolling styles.</p>
+          </div>
+        </div>
+        <div class="product-card" data-category="motorized">
+          <div class="product-visual">
+            <div class="product-swatch" style="background-image: url('https://cdn.sanity.io/images/e1syw5oe/~production/0556f84ef07b2c4d5a20082c7796dc2855bacc7a-1400x1400.webp?auto=format'); background-size: cover; background-position: center;"></div>
+            <span class="product-tag">Smart Home</span>
+            <div class="product-hover-info"><span>Explore</span></div>
+          </div>
+          <div class="product-details">
+            <h3>PowerView</h3>
+            <p class="product-subtitle">Motorization</p>
+            <p class="product-description">Intelligent motorization that lets you control your window treatments via app, voice, or automated schedules.</p>
+          </div>
+        </div>
+        <div class="product-card" data-category="blackout">
+          <div class="product-visual">
+            <div class="product-swatch" style="background-image: url('https://cdn.sanity.io/images/e1syw5oe/~production/4598232e17032e75525ed6bb83a308b0a977f240-2050x1025.webp?w=960&h=480'); background-size: cover; background-position: center;"></div>
+            <span class="product-tag">Versatile</span>
+            <div class="product-hover-info"><span>Explore</span></div>
+          </div>
+          <div class="product-details">
+            <h3>Designer Roller</h3>
+            <p class="product-subtitle">Roller Shades</p>
+            <p class="product-description">Premium roller shades with hundreds of fabric options, from sheer to opaque, for a clean modern aesthetic.</p>
+          </div>
+        </div>
+        <div class="product-card" data-category="signature">
+          <div class="product-visual">
+            <div class="product-swatch" style="background-image: url('https://cdn.sanity.io/images/e1syw5oe/~production/ad3835883bca78f0054e21f91ba73536a4f40351-1000x1000.webp?auto=format'); background-size: cover; background-position: center;"></div>
+            <span class="product-tag">Luxury</span>
+            <div class="product-hover-info"><span>Explore</span></div>
+          </div>
+          <div class="product-details">
+            <h3>Alustra</h3>
+            <p class="product-subtitle">Woven Textures</p>
+            <p class="product-description">The ultimate luxury collection featuring exclusive fabrics, hardware finishes, and design details not found anywhere else.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var tabBtns = document.querySelectorAll('.collection-tabs .tab-btn');
+    var cards = document.querySelectorAll('.product-card');
+
+    tabBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        tabBtns.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var filter = btn.getAttribute('data-filter');
+
+        cards.forEach(function(card) {
+          if (filter === 'all' || card.getAttribute('data-category') === filter) {
+            card.style.display = '';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Collections",
+  "settings": [
+    {
+      "type": "text",
+      "id": "section_label",
+      "label": "Section Label",
+      "default": "Our Collections"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Curated Window Fashions"
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "label": "Description",
+      "default": "Each collection represents the pinnacle of design and engineering from Hunter Douglas, the world's leading window treatment manufacturer."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "product_card",
+      "name": "Product Card",
+      "settings": [
+        {
+          "type": "text",
+          "id": "product_name",
+          "label": "Product Name",
+          "default": "Product"
+        },
+        {
+          "type": "text",
+          "id": "product_subtitle",
+          "label": "Product Subtitle",
+          "default": "Window Treatment"
+        },
+        {
+          "type": "textarea",
+          "id": "product_description",
+          "label": "Product Description",
+          "default": "Beautiful window treatment for your home."
+        },
+        {
+          "type": "url",
+          "id": "product_url",
+          "label": "Product URL"
+        },
+        {
+          "type": "image_picker",
+          "id": "product_image",
+          "label": "Product Image",
+          "info": "Upload an image. If empty, the external image URL or accent color will be used."
+        },
+        {
+          "type": "text",
+          "id": "external_image_url",
+          "label": "External Image URL (fallback)",
+          "info": "Used if no image is uploaded above."
+        },
+        {
+          "type": "text",
+          "id": "product_tag",
+          "label": "Tag (optional)",
+          "info": "e.g. Best Seller, New, etc."
+        },
+        {
+          "type": "color",
+          "id": "accent_color",
+          "label": "Accent Color (fallback)",
+          "default": "#d4c5b0"
+        },
+        {
+          "type": "select",
+          "id": "category",
+          "label": "Category",
+          "options": [
+            { "value": "sheer", "label": "Sheer & Light" },
+            { "value": "blackout", "label": "Blackout" },
+            { "value": "signature", "label": "Signature" },
+            { "value": "motorized", "label": "Motorized" }
+          ],
+          "default": "sheer"
+        }
+      ]
+    }
+  ],
+  "max_blocks": 12,
+  "presets": [
+    {
+      "name": "Collections",
+      "blocks": [
+        {
+          "type": "product_card",
+          "settings": {
+            "product_name": "Silhouette",
+            "product_subtitle": "Sheer Shadings",
+            "product_description": "Signature S-shaped vanes float between two sheers, offering a perfect balance of light, privacy, and UV protection.",
+            "product_tag": "Best Seller",
+            "external_image_url": "https://cdn.sanity.io/images/e1syw5oe/~production/d2deff4d64229c897d45e1fcaf400b77a80db09a-2050x1025.jpg?w=960&h=480",
+            "accent_color": "#d4c5b0",
+            "category": "sheer"
+          }
+        },
+        {
+          "type": "product_card",
+          "settings": {
+            "product_name": "Luminette",
+            "product_subtitle": "Privacy Sheers",
+            "product_description": "Vertical fabric vanes rotate within a sheer for precise light control, perfect for wide windows and sliding doors.",
+            "external_image_url": "https://cdn.sanity.io/images/e1syw5oe/~production/316e83cc93de6b172e3da77e203444da3d6f9cfe-4000x2666.png?w=960&h=640",
+            "accent_color": "#c5b8a8",
+            "category": "sheer"
+          }
+        },
+        {
+          "type": "product_card",
+          "settings": {
+            "product_name": "Duette",
+            "product_subtitle": "Honeycomb Shades",
+            "product_description": "Award-winning cellular construction traps air for superior insulation, reducing energy costs while providing complete light control.",
+            "product_tag": "Energy Efficient",
+            "external_image_url": "https://cdn.sanity.io/images/e1syw5oe/~production/5558e5a981b925daaaa8434c3cc1250f6816d5ff-500x500.webp",
+            "accent_color": "#a89882",
+            "category": "blackout"
+          }
+        },
+        {
+          "type": "product_card",
+          "settings": {
+            "product_name": "Pirouette",
+            "product_subtitle": "Shadings",
+            "product_description": "Soft horizontal fabric vanes on a single sheer backing that flatten for a clean look or open for filtered light.",
+            "product_tag": "Signature",
+            "external_image_url": "https://cdn.sanity.io/images/e1syw5oe/~production/20d6372243cd3d5be6de9f8efe32e9281ed60534-1000x500.webp?w=960&h=480",
+            "accent_color": "#b8a898",
+            "category": "sheer"
+          }
+        },
+        {
+          "type": "product_card",
+          "settings": {
+            "product_name": "Vignette",
+            "product_subtitle": "Modern Roman Shades",
+            "product_description": "Clean, consistent folds with no exposed rear cords for a tailored look. Available in flat and rolling styles.",
+            "external_image_url": "https://cdn.sanity.io/images/e1syw5oe/~production/5916eca247751b15d9e983b349187aec3c02a440-1025x513.jpg",
+            "accent_color": "#c8b8a0",
+            "category": "signature"
+          }
+        },
+        {
+          "type": "product_card",
+          "settings": {
+            "product_name": "PowerView",
+            "product_subtitle": "Motorization",
+            "product_description": "Intelligent motorization that lets you control your window treatments via app, voice, or automated schedules.",
+            "product_tag": "Smart Home",
+            "external_image_url": "https://cdn.sanity.io/images/e1syw5oe/~production/0556f84ef07b2c4d5a20082c7796dc2855bacc7a-1400x1400.webp?auto=format",
+            "accent_color": "#2c3e50",
+            "category": "motorized"
+          }
+        },
+        {
+          "type": "product_card",
+          "settings": {
+            "product_name": "Designer Roller",
+            "product_subtitle": "Roller Shades",
+            "product_description": "Premium roller shades with hundreds of fabric options, from sheer to opaque, for a clean modern aesthetic.",
+            "product_tag": "Versatile",
+            "external_image_url": "https://cdn.sanity.io/images/e1syw5oe/~production/4598232e17032e75525ed6bb83a308b0a977f240-2050x1025.webp?w=960&h=480",
+            "accent_color": "#8b7d6b",
+            "category": "blackout"
+          }
+        },
+        {
+          "type": "product_card",
+          "settings": {
+            "product_name": "Alustra",
+            "product_subtitle": "Woven Textures",
+            "product_description": "The ultimate luxury collection featuring exclusive fabrics, hardware finishes, and design details not found anywhere else.",
+            "product_tag": "Luxury",
+            "external_image_url": "https://cdn.sanity.io/images/e1syw5oe/~production/ad3835883bca78f0054e21f91ba73536a4f40351-1000x1000.webp?auto=format",
+            "accent_color": "#7a6b5a",
+            "category": "signature"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

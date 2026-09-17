@@ -1,0 +1,48 @@
+<section class="brand-statement" id="brand">
+  <div class="container">
+    <span class="section-label">{{ section.settings.label }}</span>
+    <blockquote class="brand-quote">
+      {% assign words = section.settings.quote | split: ' ' %}
+      {% for word in words %}
+        {% assign stripped_word = word | remove: '.' | remove: ',' | remove: '—' | downcase %}
+        {% if stripped_word == section.settings.accent_word %}
+          <em>{{ word }}</em>
+        {% else %}
+          {{ word }}
+        {% endif %}
+        {% unless forloop.last %} {% endunless %}
+      {% endfor %}
+    </blockquote>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Brand Statement",
+  "settings": [
+    {
+      "type": "text",
+      "id": "label",
+      "label": "Section Label",
+      "default": "Our Philosophy"
+    },
+    {
+      "type": "textarea",
+      "id": "quote",
+      "label": "Quote Text",
+      "default": "A window treatment should do more than dress a window — it should transform how a room feels, how light moves, and how life unfolds within."
+    },
+    {
+      "type": "text",
+      "id": "accent_word",
+      "label": "Accent Word (italic)",
+      "default": "feels"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Brand Statement"
+    }
+  ]
+}
+{% endschema %}

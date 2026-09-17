@@ -1,0 +1,27 @@
+{
+  "layout": "smori",
+  "sections": {
+    "navbar": {
+      "type": "smori-navbar",
+      "settings": {}
+    },
+    "cases": {
+      "type": "smori-cases",
+      "settings": {
+        "section_label": "Our Work",
+        "heading": "Installation Gallery",
+        "description": "Every project is measured, tailored and installed by SMORI. Filter by product to find inspiration for your own windows.",
+        "featured_only": false,
+        "max_cases": 48,
+        "show_filters": true,
+        "page_mode": true,
+        "show_view_all": false
+      }
+    },
+    "contact": {
+      "type": "smori-contact",
+      "settings": {}
+    }
+  },
+  "order": ["navbar", "cases", "contact"]
+}

@@ -1,0 +1,27 @@
+{
+  "layout": "smori",
+  "sections": {
+    "navbar": {
+      "type": "smori-navbar",
+      "settings": {}
+    },
+    "main": {
+      "type": "smori-case-detail",
+      "settings": {
+        "section_label": "Installation",
+        "all_cases_url": "/pages/installations",
+        "show_both_languages": false,
+        "show_related": true
+      }
+    },
+    "contact": {
+      "type": "smori-contact",
+      "settings": {
+        "heading": "Want the Same Look?",
+        "description": "Schedule a complimentary in-home consultation. We'll measure, bring samples, and design a treatment for your windows.",
+        "form_heading": "Request a Measurement"
+      }
+    }
+  },
+  "order": ["navbar", "main", "contact"]
+}
