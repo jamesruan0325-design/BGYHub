@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMORI 照片助手</title>
+<style>
+  :root { --gold:#b8977e; --gold-light:#d4c5b0; --bg:#0a0a0a; --panel:#141414; --line:#2a2a2a; --text:#d8d8d8; --muted:#8f8f8f; --ok:#6fbf8a; --warn:#e0b25a; --err:#e07070; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.6 Inter,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+  a { color:var(--gold); }
+  header { display:flex; align-items:center; justify-content:space-between; padding:16px 28px; border-bottom:1px solid var(--line); }
+  header .logo { font-family:Georgia,"Cormorant Garamond",serif; letter-spacing:6px; font-size:22px; color:#fff; }
+  header .status { font-size:12px; color:var(--muted); }
+  header .status b { color:var(--text); font-weight:500; }
+  main { display:grid; grid-template-columns:300px 1fr; min-height:calc(100vh - 62px); }
+  aside { border-right:1px solid var(--line); padding:20px; overflow:auto; }
+  section { padding:24px 32px; max-width:1100px; }
+  h2 { font-family:Georgia,serif; font-weight:400; font-size:24px; margin:0 0 16px; color:#fff; }
+  h3 { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); margin:28px 0 12px; }
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border:1px solid var(--gold); background:transparent; color:var(--gold); cursor:pointer; letter-spacing:1px; font-size:12px; text-transform:uppercase; }
+  .btn.primary { background:var(--gold); color:#000; }
+  .btn:disabled { opacity:.4; cursor:default; }
+  .btn.small { padding:6px 10px; font-size:11px; }
+  label { display:block; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin:14px 0 6px; }
+  input, select, textarea { width:100%; background:#1b1b1b; border:1px solid #333; color:#eee; padding:10px 12px; font:inherit; }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--gold); }
+  textarea { min-height:90px; resize:vertical; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 20px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 20px; }
+  .proj { padding:12px; border:1px solid var(--line); margin-bottom:10px; cursor:pointer; display:flex; gap:10px; align-items:center; }
+  .proj:hover, .proj.active { border-color:var(--gold); }
+  .proj img { width:56px; height:42px; object-fit:cover; background:#222; }
+  .proj .t { font-size:13px; color:#fff; }
+  .proj .m { font-size:11px; color:var(--muted); }
+  .badge { font-size:10px; padding:2px 7px; border:1px solid var(--line); color:var(--muted); margin-left:6px; }
+  .badge.draft { border-color:var(--ok); color:var(--ok); }
+  .drop { border:1px dashed #444; padding:28px; text-align:center; color:var(--muted); margin-top:12px; }
+  .drop.over { border-color:var(--gold); color:var(--gold); }
+  .photos { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:14px; margin-top:14px; }
+  .ph { border:1px solid var(--line); background:var(--panel); }
+  .ph.cover { border-color:var(--gold); }
+  .ph img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
+  .ph .i { padding:8px 10px; font-size:11px; color:var(--muted); }
+  .ph .a { display:flex; gap:6px; padding:0 8px 8px; flex-wrap:wrap; }
+  .ph .a button { background:none; border:1px solid #333; color:var(--muted); font-size:10px; padding:3px 6px; cursor:pointer; }
+  .ph .a button:hover { border-color:var(--gold); color:var(--gold); }
+  .panel { background:var(--panel); border:1px solid var(--line); padding:20px 24px; margin-top:12px; }
+  .log { font:12px/1.5 ui-monospace,Menlo,monospace; color:var(--muted); white-space:pre-wrap; background:#0f0f0f; border:1px solid var(--line); padding:12px; margin-top:12px; max-height:220px; overflow:auto; }
+  .warn { color:var(--warn); }
+  .err { color:var(--err); }
+  .ok { color:var(--ok); }
+  .tabs { display:flex; gap:6px; margin:10px 0; }
+  .tabs button { background:none; border:1px solid var(--line); color:var(--muted); padding:6px 14px; cursor:pointer; font-size:12px; }
+  .tabs button.on { border-color:var(--gold); color:var(--gold); }
+  .hidden { display:none !important; }
+  .facts-note { font-size:12px; color:var(--muted); margin-top:4px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SMORI <span style="font-size:12px;letter-spacing:2px;color:var(--muted)">照片助手</span></div>
+  <div class="status" id="status">连接中…</div>
+</header>
+<main>
+  <aside>
+    <button class="btn primary" id="newBtn" style="width:100%;justify-content:center">＋ 新建项目</button>
+    <div id="projects" style="margin-top:16px"></div>
+  </aside>
+  <section id="view"><p style="color:var(--muted)">选择左侧项目，或新建一个项目。</p></section>
+</main>
+
+<script>
+const $ = (s, r=document) => r.querySelector(s);
+const api = async (url, opt={}) => {
+  const res = await fetch(url, { headers: opt.body && !(opt.body instanceof FormData) ? {'Content-Type':'application/json'} : {}, ...opt, body: opt.body && !(opt.body instanceof FormData) ? JSON.stringify(opt.body) : opt.body });
+  const json = await res.json().catch(() => ({ error: res.statusText }));
+  if (!res.ok) throw new Error(json.error || res.statusText);
+  return json;
+};
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let health = null, current = null;
+
+async function loadHealth() {
+  health = await api('/api/health');
+  const s = health.shopify, c = health.claude;
+  $('#status').innerHTML =
+    `Claude: <b class="${c.configured?'ok':'err'}">${c.configured ? c.model : '未配置 ANTHROPIC_API_KEY'}</b> &nbsp;|&nbsp; ` +
+    `Shopify: <b class="${s.connected?'ok':'err'}">${!s.configured ? '未配置 SHOPIFY_ADMIN_TOKEN' : s.connected ? esc(s.name) : '连接失败'}</b>` +
+    (s.connected ? ` &nbsp;|&nbsp; 元对象定义: <b class="${s.definition.exists?'ok':'warn'}">${s.definition.exists ? `已存在 (${s.definition.fields} 字段)` : '未创建'}</b> ${s.definition.exists ? '' : '<button class="btn small" onclick="setup()">一键创建</button>'}` : '');
+}
+async function setup() { try { const r = await api('/api/setup', {method:'POST'}); alert('定义 ' + r.action + '：' + r.definition.fieldKeys.join(', ')); loadHealth(); } catch (e) { alert(e.message); } }
+
+async function loadProjects() {
+  const list = await api('/api/projects');
+  $('#projects').innerHTML = list.map(p => `
+    <div class="proj ${current && current.id===p.id?'active':''}" onclick="openProject('${p.id}')">
+      ${p.cover ? `<img src="/files/${p.id}/thumb/${p.cover}.jpg">` : '<img>'}
+      <div><div class="t">${esc(p.facts.title || p.facts.product_name)} · ${esc(p.facts.location)}</div>
+      <div class="m">${p.photos} 张 ${p.hasCopy ? '· 已生成文案' : ''} ${p.shopify ? `<span class="badge draft">${p.shopify.dryRun ? '模拟' : '草稿已保存'}</span>` : ''}</div></div>
+    </div>`).join('') || '<p style="color:var(--muted);font-size:12px">还没有项目</p>';
+}
+
+function factsForm(f = {}) {
+  const prodOpts = health.products.map(p => `<option value="${p.name}" ${f.product_name===p.name?'selected':''}>${p.name} — ${p.subtitle}</option>`).join('');
+  const catOpts = health.categories.map(c => `<option value="${c.value}" ${f.category===c.value?'selected':''}>${c.label} / ${c.zh}</option>`).join('');
+  return `
+    <div class="grid3">
+      <div><label>产品型号 *（由您确认）</label><select name="product_name"><option value="">— 选择 —</option>${prodOpts}<option value="__custom" ${f.product_name && !health.products.some(p=>p.name===f.product_name)?'selected':''}>其他（手动输入）</option></select>
+        <input name="product_custom" placeholder="自定义产品名" value="${esc(f.product_name && !health.products.some(p=>p.name===f.product_name) ? f.product_name : '')}" style="margin-top:6px"></div>
+      <div><label>产品分类 *</label><select name="category">${catOpts}</select></div>
+      <div><label>地点 *（由您确认）</label><input name="location" placeholder="如 Irvine, CA" value="${esc(f.location||'')}"></div>
+    </div>
+    <div class="grid3">
+      <div><label>空间（英文，可空）</label><input name="room" placeholder="Living Room" value="${esc(f.room||'')}"></div>
+      <div><label>空间（中文，可空）</label><input name="room_zh" placeholder="客厅" value="${esc(f.room_zh||'')}"></div>
+      <div><label>安装日期</label><input name="installed_on" type="date" value="${esc(f.installed_on||'')}"></div>
+    </div>
+    <div class="grid2">
+      <div><label>工作标题（可空）</label><input name="title" value="${esc(f.title||'')}"></div>
+      <div><label>给文案的备注（可空）</label><input name="notes" placeholder="例如：客户要求遮光、朝西窗户、配电动" value="${esc(f.notes||'')}"></div>
+    </div>
+    <p class="facts-note">AI 不会根据照片猜测产品型号和地点，只使用这里填写的内容。</p>`;
+}
+function readFacts(form) {
+  const fd = new FormData(form); const o = Object.fromEntries(fd.entries());
+  if (o.product_name === '__custom') o.product_name = o.product_custom;
+  delete o.product_custom; return o;
+}
+
+$('#newBtn').onclick = () => {
+  current = null;
+  $('#view').innerHTML = `<h2>新建项目</h2><form id="newForm">${factsForm()}<div style="margin-top:18px"><button class="btn primary">创建并上传照片</button></div></form>`;
+  $('#newForm').onsubmit = async (e) => { e.preventDefault(); try { const p = await api('/api/projects', {method:'POST', body: readFacts(e.target)}); await loadProjects(); openProject(p.id); } catch (err) { alert(err.message); } };
+};
+
+async function openProject(id) {
+  const p = await api('/api/projects/' + id); current = p; await loadProjects();
+  const c = p.copy;
+  $('#view').innerHTML = `
+    <h2>${esc(c?.title || p.facts.title || p.facts.product_name)} <span style="font-size:13px;color:var(--muted)">${p.id}</span></h2>
+    ${p.shopify ? `<div class="panel ok">✔ ${p.shopify.dryRun ? '模拟运行完成（未写入 Shopify）' : `已保存为 Shopify 草稿：${esc(p.shopify.handle)}`} ${p.shopify.adminUrl ? `— <a href="${p.shopify.adminUrl}" target="_blank">在后台打开审核</a>` : ''}</div>` : ''}
+
+    <h3>1. 项目信息</h3>
+    <form id="factsForm">${factsForm(p.facts)}<button class="btn small" style="margin-top:10px">保存信息</button></form>
+
+    <h3>2. 安装照片（${p.photos.length} 张 · 原图保留，网站用压缩版）</h3>
+    <div class="drop" id="drop">拖拽照片到这里，或 <label style="display:inline;color:var(--gold);cursor:pointer;text-transform:none;font-size:14px">点击选择<input type="file" id="fileInput" multiple accept="image/*" style="display:none"></label><br><span style="font-size:12px">支持 JPG / PNG / WebP，可一次选多张</span></div>
+    <div id="upLog" class="log hidden"></div>
+    <div class="photos">${p.photos.map((ph, i) => `
+      <div class="ph ${ph.cover?'cover':''}">
+        <img src="/files/${p.id}/thumb/${ph.id}.jpg" title="${esc(ph.originalName)}">
+        <div class="i">${i+1}. ${esc(ph.originalName)}<br>${Math.round(ph.originalBytes/1024)} KB → ${Math.round(ph.webBytes/1024)} KB · ${ph.width}×${ph.height} ${ph.cover?'<b class="ok">封面</b>':''} ${ph.shopifyFileId?'<span class="ok">已上传</span>':''}<br>${esc(ph.caption||'')}</div>
+        <div class="a">
+          <button onclick="patch({coverId:'${ph.id}'})">设为封面</button>
+          <button onclick="move('${ph.id}',-1)">←</button><button onclick="move('${ph.id}',1)">→</button>
+          <a href="/files/${p.id}/original/${ph.id}${ph.mime==='image/png'?'.png':ph.mime==='image/webp'?'.webp':'.jpg'}" target="_blank"><button>原图</button></a>
+          ${ph.shopifyFileId?'':`<button onclick="delPhoto('${ph.id}')">删除</button>`}
+        </div>
+      </div>`).join('')}</div>
+
+    <h3>3. 文案</h3>
+    <div>
+      <button class="btn primary" id="genBtn" ${!health.claude.configured || !p.photos.length ? 'disabled' : ''}>${c ? '重新生成' : '生成中英文文案'}</button>
+      <span style="font-size:12px;color:var(--muted);margin-left:10px">${health.claude.configured ? `模型 ${health.claude.model}，约 30–90 秒` : '未配置 ANTHROPIC_API_KEY'}</span>
+    </div>
+    <div id="genLog" class="log hidden"></div>
+    ${c ? copyForm(p) : ''}
+
+    <h3>4. 保存到 Shopify（草稿）</h3>
+    <div>
+      <button class="btn primary" id="draftBtn" ${!c || !health.shopify.connected || (p.shopify && !p.shopify.dryRun) ? 'disabled' : ''}>上传照片并创建草稿</button>
+      <button class="btn" id="dryBtn" ${!c ? 'disabled' : ''}>模拟运行（不写入）</button>
+      <span style="font-size:12px;color:var(--muted);margin-left:10px">创建后状态为「草稿」，需在 Shopify 后台审核后改为「已发布」</span>
+    </div>
+    <div id="draftLog" class="log hidden"></div>`;
+
+  $('#factsForm').onsubmit = async (e) => { e.preventDefault(); try { await api('/api/projects/'+p.id, {method:'PATCH', body:{facts: readFacts(e.target)}}); openProject(p.id); } catch (err) { alert(err.message); } };
+  const drop = $('#drop');
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); uploadFiles(p.id, e.dataTransfer.files); };
+  $('#fileInput').onchange = (e) => uploadFiles(p.id, e.target.files);
+  $('#genBtn').onclick = () => run(p.id, '/generate', {}, '#genLog', '#genBtn');
+  $('#draftBtn').onclick = () => { if (confirm('将把压缩后的照片上传到 Shopify Files，并创建一条「草稿」案例。继续？')) run(p.id, '/shopify-draft', {}, '#draftLog', '#draftBtn'); };
+  $('#dryBtn').onclick = () => run(p.id, '/shopify-draft', {dryRun:true}, '#draftLog', '#dryBtn');
+  const cf = $('#copyForm'); if (cf) cf.onsubmit = async (e) => { e.preventDefault(); try { await api('/api/projects/'+p.id, {method:'PATCH', body:{copy: Object.fromEntries(new FormData(e.target).entries())}}); openProject(p.id); } catch (err) { alert(err.message); } };
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); document.querySelectorAll('.lang').forEach(x => x.classList.toggle('hidden', x.dataset.lang !== b.dataset.lang)); });
+}
+
+function copyForm(p) {
+  const c = p.copy, t = p.copyText;
+  return `<form id="copyForm" class="panel">
+    ${c.warnings?.length ? `<div class="warn">⚠ 发布前请检查：${c.warnings.map(esc).join('；')}</div>` : ''}
+    ${c.room_observed && !p.facts.room ? `<div class="warn">AI 从照片判断的空间：${esc(c.room_observed)} / ${esc(c.room_observed_zh)}（仅供参考，可在项目信息里填写）</div>` : ''}
+    <div class="tabs"><button type="button" class="on" data-lang="en">English</button><button type="button" data-lang="zh">中文</button><button type="button" data-lang="xhs">小红书</button></div>
+    <div class="lang" data-lang="en">
+      <label>Title</label><input name="title" value="${esc(c.title)}">
+      <label>Subtitle</label><input name="subtitle" value="${esc(c.subtitle)}">
+      <label>Summary</label><textarea name="summary">${esc(c.summary)}</textarea>
+      <label>Description（"## " 开头为小标题，"- " 开头为列表，空行分段）</label><textarea name="description_text" style="min-height:220px">${esc(t.description)}</textarea>
+    </div>
+    <div class="lang hidden" data-lang="zh">
+      <label>标题</label><input name="title_zh" value="${esc(c.title_zh)}">
+      <label>副标题</label><input name="subtitle_zh" value="${esc(c.subtitle_zh)}">
+      <label>简介</label><textarea name="summary_zh">${esc(c.summary_zh)}</textarea>
+      <label>项目介绍</label><textarea name="description_zh_text" style="min-height:220px">${esc(t.description_zh)}</textarea>
+    </div>
+    <div class="lang hidden" data-lang="xhs">
+      <label>小红书标题</label><input name="xhs_title" value="${esc(c.xhs_title)}">
+      <label>小红书正文</label><textarea name="xhs_body" style="min-height:220px">${esc(c.xhs_body)}</textarea>
+      <button type="button" class="btn small" onclick="navigator.clipboard.writeText(document.querySelector('[name=xhs_title]').value+'\\n\\n'+document.querySelector('[name=xhs_body]').value)">复制标题+正文</button>
+    </div>
+    <div style="margin-top:14px;font-size:12px;color:var(--muted)">生成于 ${esc(c.generatedAt||'')} · ${esc(c.model||'')}</div>
+    <button class="btn small" style="margin-top:10px">保存修改</button>
+  </form>`;
+}
+
+async function run(id, path, body, logSel, btnSel) {
+  const log = $(logSel), btn = $(btnSel); log.classList.remove('hidden'); log.textContent = '处理中…'; btn.disabled = true;
+  try { const r = await api('/api/projects/'+id+path, {method:'POST', body}); log.textContent = r.logs.join('\n'); openProject(id); }
+  catch (e) { log.innerHTML = '<span class="err">出错：' + esc(e.message) + '</span>'; btn.disabled = false; }
+}
+async function uploadFiles(id, files) {
+  if (!files.length) return;
+  const fd = new FormData(); for (const f of files) fd.append('photos', f);
+  const log = $('#upLog'); log.classList.remove('hidden'); log.textContent = `上传 ${files.length} 张，压缩中…`;
+  try { const r = await api('/api/projects/'+id+'/photos', {method:'POST', body: fd}); log.textContent = r.errors.length ? '部分失败：' + r.errors.join('\n') : '完成'; openProject(id); }
+  catch (e) { log.innerHTML = '<span class="err">' + esc(e.message) + '</span>'; }
+}
+async function patch(body) { try { await api('/api/projects/'+current.id, {method:'PATCH', body}); openProject(current.id); } catch (e) { alert(e.message); } }
+async function move(id, dir) { const ids = current.photos.map(p => p.id); const i = ids.indexOf(id); const j = i + dir; if (j < 0 || j >= ids.length) return; [ids[i], ids[j]] = [ids[j], ids[i]]; patch({photoOrder: ids}); }
+async function delPhoto(id) { if (!confirm('删除这张照片（含原图）？')) return; try { await api(`/api/projects/${current.id}/photos/${id}`, {method:'DELETE'}); openProject(current.id); } catch (e) { alert(e.message); } }
+
+loadHealth().then(loadProjects).catch(e => { $('#status').innerHTML = '<span class="err">' + esc(e.message) + '</span>'; });
+</script>
+</body>
+</html>
