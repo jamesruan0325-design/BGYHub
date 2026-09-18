@@ -1,8 +1,9 @@
 # Shopify CLI app configuration (custom distribution, non-embedded, OAuth authorization code grant).
-# `shopify app config link` fills client_id from the Dev Dashboard; `shopify app deploy` pushes this file.
+# Linked to the Dev Dashboard app (client_id is public); `shopify app deploy` pushes this file.
 
 name = "SMORI Photo Assistant"
-handle = "smori-photo-assistant"
+client_id = "87e503f30877f5ab5c9b6041ed82747c"
+handle = "smori-photo-assistant-1"
 # Stable production URL. Change both URLs together if you host elsewhere.
 application_url = "https://smori-photo-assistant.fly.dev"
 embedded = false
