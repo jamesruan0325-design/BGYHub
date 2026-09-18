@@ -10,7 +10,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from './config.js';
 import { processUpload } from './images.js';
-import { ensureDefinition, getDefinition, shopInfo, shopifyConfigured } from './shopify.js';
+import { ensureDefinition, getDefinition, shopInfo, resolveSession } from './shopify.js';
+import { oauthConfigured } from './oauth.js';
 import { claudeConfigured } from './copy.js';
 import { runGenerate, runSaveDraft } from './pipeline.js';
 import { createProject, saveProject, type GeneratedCopy } from './store.js';
@@ -37,9 +38,11 @@ async function main() {
 
   if (cmd === 'check') {
     console.log(`Claude:  ${claudeConfigured() ? `configured (${config.claudeModel})` : 'ANTHROPIC_API_KEY missing'}`);
-    if (!shopifyConfigured()) { console.log('Shopify: SHOPIFY_ADMIN_TOKEN missing'); return; }
+    console.log(`OAuth:   ${oauthConfigured() ? `configured, app URL ${config.appUrl}, install URL ${config.appUrl}/auth?shop=${config.shop}` : 'not configured (SHOPIFY_API_KEY / SHOPIFY_API_SECRET / SHOPIFY_APP_URL / SESSION_SECRET)'}`);
+    let session;
+    try { session = await resolveSession(); } catch (e) { console.log(`Shopify: ${(e as Error).message}`); return; }
     const info = await shopInfo();
-    console.log(`Shopify: connected to "${info.name}" (${info.myshopifyDomain}), API ${config.apiVersion}`);
+    console.log(`Shopify: installed on "${info.name}" (${info.myshopifyDomain}), scopes [${session.scope || 'static token'}], API ${config.apiVersion}`);
     const def = await getDefinition();
     console.log(def ? `Definition ${config.metaobjectType}: ${def.fieldKeys.length} fields, publishable=${def.publishable}, onlineStore=${def.onlineStore}` : `Definition ${config.metaobjectType}: NOT created yet (run: npm run cli -- setup)`);
     return;

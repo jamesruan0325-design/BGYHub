@@ -1,0 +1,31 @@
+# Shopify CLI app configuration (custom distribution, non-embedded, OAuth authorization code grant).
+# `shopify app config link` fills client_id from the Dev Dashboard; `shopify app deploy` pushes this file.
+
+name = "SMORI Photo Assistant"
+handle = "smori-photo-assistant"
+# Stable production URL. Change both URLs together if you host elsewhere.
+application_url = "https://smori-photo-assistant.fly.dev"
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = false
+
+[access_scopes]
+# Scopes are managed by Shopify at install time (managed installation);
+# the app still obtains its offline token through the authorization code grant.
+scopes = "read_files,write_files,read_metaobjects,write_metaobjects,read_metaobject_definitions,write_metaobject_definitions"
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = ["https://smori-photo-assistant.fly.dev/auth/callback"]
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  topics = ["app/uninstalled"]
+  uri = "/webhooks/app_uninstalled"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "/webhooks/compliance"

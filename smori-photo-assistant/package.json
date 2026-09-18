@@ -6,10 +6,13 @@
   "description": "S. MORI installation photo assistant: upload photos, compress, generate bilingual case copy with Claude, save as a draft installation_case metaobject in Shopify.",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts",
+    "start": "node --import tsx src/server.ts",
     "cli": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --import tsx test/*.test.ts"
+    "test": "node --test --import tsx test/*.test.ts",
+    "shopify": "shopify",
+    "deploy:shopify": "shopify app deploy",
+    "env:pull": "shopify app env pull"
   },
   "engines": {
     "node": ">=20"
@@ -20,13 +23,13 @@
     "express": "^5.2.1",
     "multer": "^2.4.0",
     "sharp": "^0.35.4",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "tsx": "^4.23.13"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.6.1",
-    "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   }
 }

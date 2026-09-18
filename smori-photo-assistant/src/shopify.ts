@@ -1,24 +1,41 @@
 import fs from 'node:fs/promises';
 import { config } from './config.js';
+import { getSession, listShops, type ShopSession } from './tokens.js';
 
 export class ShopifyError extends Error {}
 
-function endpoint(): string {
+/**
+ * Which store and token to use. Order: OAuth session for SHOPIFY_SHOP -> the only
+ * installed shop -> legacy static SHOPIFY_ADMIN_TOKEN. Throws when the app is not installed.
+ */
+export async function resolveSession(): Promise<ShopSession> {
+  if (config.sessionSecret) {
+    const s = await getSession(config.shop);
+    if (s) return s;
+    const shops = await listShops();
+    if (shops.length === 1) return (await getSession(shops[0]))!;
+  }
+  if (config.adminToken) return { shop: config.shop, accessToken: config.adminToken, scope: '', installedAt: '', updatedAt: '' };
+  throw new ShopifyError(`App is not installed on ${config.shop}. Open the custom install link from the Dev Dashboard (or ${config.appUrl || 'the app URL'}/auth?shop=${config.shop}).`);
+}
+
+export async function shopifyConfigured(): Promise<boolean> {
+  try { await resolveSession(); return true; } catch { return false; }
+}
+
+function endpoint(shop: string): string {
   if (config.adminEndpoint) return config.adminEndpoint;
-  return `https://${config.shop}/admin/api/${config.apiVersion}/graphql.json`;
+  return `https://${shop}/admin/api/${config.apiVersion}/graphql.json`;
 }
 
-export function shopifyConfigured(): boolean {
-  return Boolean(config.adminToken || config.adminEndpoint);
-}
-
-export async function graphql<T = any>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  if (!shopifyConfigured()) throw new ShopifyError('SHOPIFY_ADMIN_TOKEN is not set');
-  const res = await fetch(endpoint(), {
+export async function graphql<T = any>(query: string, variables: Record<string, unknown> = {}, session?: ShopSession): Promise<T> {
+  const s = session ?? (await resolveSession());
+  const res = await fetch(endpoint(s.shop), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': config.adminToken },
+    headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': s.accessToken },
     body: JSON.stringify({ query, variables }),
   });
+  if (res.status === 401 || res.status === 403) throw new ShopifyError(`Shopify HTTP ${res.status}: token rejected or missing scopes. Re-install the app from the install link.`);
   if (!res.ok) throw new ShopifyError(`Shopify HTTP ${res.status}: ${(await res.text()).slice(0, 500)}`);
   const json = (await res.json()) as { data?: T; errors?: { message: string }[] };
   if (json.errors?.length) throw new ShopifyError(`Shopify GraphQL: ${json.errors.map((e) => e.message).join('; ')}`);

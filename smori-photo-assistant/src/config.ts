@@ -6,9 +6,21 @@ function env(name: string, fallback = ''): string {
   return v === undefined || v === '' ? fallback : v;
 }
 
+export const SCOPES = 'read_files,write_files,read_metaobjects,write_metaobjects,read_metaobject_definitions,write_metaobject_definitions';
+
 export const config = {
   shop: env('SHOPIFY_SHOP', 'smori-9216.myshopify.com'),
+  /** Legacy fallback only: a static Admin API token. The OAuth session store is preferred. */
   adminToken: env('SHOPIFY_ADMIN_TOKEN'),
+  /** Set by `shopify app env pull` / `shopify app dev`, or by hand from the Dev Dashboard. */
+  apiKey: env('SHOPIFY_API_KEY'),
+  apiSecret: env('SHOPIFY_API_SECRET'),
+  scopes: env('SCOPES', SCOPES),
+  /** Public base URL of this deployment, e.g. https://smori-photo-assistant.fly.dev (no trailing slash). */
+  appUrl: env('SHOPIFY_APP_URL', env('APP_URL', env('HOST'))).replace(/\/$/, ''),
+  /** Random secret for cookie signing and token encryption (>= 32 chars). */
+  sessionSecret: env('SESSION_SECRET'),
+  nodeEnv: env('NODE_ENV', 'development'),
   apiVersion: env('SHOPIFY_API_VERSION', '2026-07'),
   storeHandle: env('SHOPIFY_STORE_HANDLE', 'smori-9216'),
   /** Optional override of the Admin GraphQL endpoint (used by the fake server in tests). */

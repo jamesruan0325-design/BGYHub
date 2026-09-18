@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { config, CATEGORIES, PRODUCTS } from './config.js';
 import { processUpload } from './images.js';
 import { blocksToText, textToBlocks } from './richtext.js';
-import { getDefinition, shopInfo, shopifyConfigured, ensureDefinition } from './shopify.js';
+import { getDefinition, shopInfo, shopifyConfigured, ensureDefinition, resolveSession } from './shopify.js';
+import { beginAuth, handleCallback, isValidShop, oauthConfigured, verifyQueryHmac } from './oauth.js';
+import { handleWebhook } from './webhooks.js';
+import { getSession } from './tokens.js';
 import { claudeConfigured } from './copy.js';
 import { runGenerate, runSaveDraft, buildMetaobjectFields } from './pipeline.js';
 import { createProject, deletePhotoFiles, getProject, listProjects, photoPath, saveProject, type ProjectFacts } from './store.js';
@@ -14,11 +17,33 @@ import { createProject, deletePhotoFiles, getProject, listProjects, photoPath, s
 const here = path.dirname(fileURLToPath(import.meta.url));
 const param = (req: express.Request, name: string) => String(req.params[name] ?? '');
 const app = express();
+app.set('trust proxy', 1); // behind Fly/Render/Cloudflare: correct req.secure and cookies
+
+// ---- Shopify OAuth + webhooks (no basic auth; Shopify calls these) ----
+app.get('/auth', (req, res) => beginAuth(req, res));
+app.get('/auth/callback', wrapPlain((req, res) => handleCallback(req, res)));
+app.post('/webhooks/:topic', express.raw({ type: '*/*', limit: '1mb' }), wrapPlain(handleWebhook));
+app.get('/healthz', (_req, res) => { res.json({ ok: true }); });
+
 app.use(express.json({ limit: '2mb' }));
 
-// ---- basic auth (user "smori") ----
+// ---- entry from Shopify admin (non-embedded app opens in its own tab with ?shop&hmac&host&timestamp) ----
+app.get('/', (req, res, next) => {
+  const shop = req.query.shop;
+  if (!isValidShop(shop)) return next();
+  if (req.query.hmac && !verifyQueryHmac(req.query as Record<string, unknown>)) { res.status(400).send('invalid hmac'); return; }
+  getSession(shop).then((s) => {
+    if (!s && oauthConfigured()) return res.redirect(`/auth?shop=${encodeURIComponent(shop)}`);
+    next();
+  }).catch(next);
+});
+
+// ---- basic auth (user "smori") for the staff UI and API ----
 app.use((req, res, next) => {
-  if (!config.adminPassword) return next();
+  if (!config.adminPassword) {
+    if (config.nodeEnv === 'production') { res.status(503).send('ADMIN_PASSWORD is not set'); return; }
+    return next();
+  }
   const h = req.headers.authorization ?? '';
   const ok = h.startsWith('Basic ') && Buffer.from(h.slice(6), 'base64').toString() === `smori:${config.adminPassword}`;
   if (ok) return next();
@@ -34,6 +59,9 @@ const wrap = (fn: Handler) => (req: express.Request, res: express.Response) => f
   console.error(err);
   res.status(400).json({ error: err.message });
 });
+function wrapPlain(fn: Handler) {
+  return (req: express.Request, res: express.Response) => fn(req, res).catch((err: Error) => { console.error(err); res.status(500).send(err.message); });
+}
 
 function cleanFacts(input: Partial<ProjectFacts>, existing?: ProjectFacts): ProjectFacts {
   const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -56,14 +84,17 @@ function cleanFacts(input: Partial<ProjectFacts>, existing?: ProjectFacts): Proj
 
 // ---- status ----
 app.get('/api/health', wrap(async (_req, res) => {
+  const installed = await shopifyConfigured();
   const out: Record<string, unknown> = {
     claude: { configured: claudeConfigured(), model: config.claudeModel },
-    shopify: { configured: shopifyConfigured(), shop: config.shop, apiVersion: config.apiVersion },
+    shopify: { configured: installed, shop: config.shop, apiVersion: config.apiVersion, oauth: oauthConfigured(), installUrl: oauthConfigured() ? `${config.appUrl}/auth?shop=${config.shop}` : null },
     categories: CATEGORIES, products: PRODUCTS.map((p) => ({ name: p.name, subtitle: p.subtitle, category: p.category })),
   };
-  if (shopifyConfigured()) {
+  if (installed) {
     try {
+      const session = await resolveSession();
       const info = await shopInfo();
+      (out.shopify as Record<string, unknown>).session = { shop: session.shop, scope: session.scope, installedAt: session.installedAt };
       const def = await getDefinition();
       out.shopify = { ...(out.shopify as object), connected: true, name: info.name, definition: def ? { exists: true, publishable: def.publishable, onlineStore: def.onlineStore, fields: def.fieldKeys.length } : { exists: false } };
     } catch (e) {
@@ -178,5 +209,6 @@ app.get('/files/:id/:kind/:name', wrap(async (req, res) => {
 
 app.listen(config.port, () => {
   console.log(`SMORI photo assistant: http://localhost:${config.port}  (data: ${config.dataDir})`);
-  console.log(`Claude: ${claudeConfigured() ? config.claudeModel : 'NOT configured'} | Shopify: ${shopifyConfigured() ? config.shop : 'NOT configured'}`);
+  console.log(`Claude: ${claudeConfigured() ? config.claudeModel : 'NOT configured'} | OAuth: ${oauthConfigured() ? `${config.appUrl} (client ${config.apiKey.slice(0, 6)}…)` : 'NOT configured'}`);
+  shopifyConfigured().then((ok) => console.log(`Shopify: ${ok ? `installed on ${config.shop}` : `not installed on ${config.shop} yet`}`));
 });

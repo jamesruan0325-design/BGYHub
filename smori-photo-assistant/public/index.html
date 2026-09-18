@@ -86,7 +86,8 @@ async function loadHealth() {
   const s = health.shopify, c = health.claude;
   $('#status').innerHTML =
     `Claude: <b class="${c.configured?'ok':'err'}">${c.configured ? c.model : '未配置 ANTHROPIC_API_KEY'}</b> &nbsp;|&nbsp; ` +
-    `Shopify: <b class="${s.connected?'ok':'err'}">${!s.configured ? '未配置 SHOPIFY_ADMIN_TOKEN' : s.connected ? esc(s.name) : '连接失败'}</b>` +
+    `Shopify: <b class="${s.connected?'ok':'err'}">${!s.configured ? (s.oauth ? `未安装到 ${esc(s.shop)}` : '未配置 OAuth（SHOPIFY_API_KEY 等）') : s.connected ? esc(s.name) : '连接失败'}</b>` +
+    (!s.configured && s.installUrl ? ` <a href="${esc(s.installUrl)}">安装应用</a>` : '') +
     (s.connected ? ` &nbsp;|&nbsp; 元对象定义: <b class="${s.definition.exists?'ok':'warn'}">${s.definition.exists ? `已存在 (${s.definition.fields} 字段)` : '未创建'}</b> ${s.definition.exists ? '' : '<button class="btn small" onclick="setup()">一键创建</button>'}` : '');
 }
 async function setup() { try { const r = await api('/api/setup', {method:'POST'}); alert('定义 ' + r.action + '：' + r.definition.fieldKeys.join(', ')); loadHealth(); } catch (e) { alert(e.message); } }
