@@ -22,11 +22,37 @@ shell. The environment variable takes priority over `.env`.
 
 ## Run
 
+### Next N numbered mailboxes (the usual way)
+
+```sh
+python3 create_users.py --count 10             # preview (read-only)
+python3 create_users.py --count 10 --execute   # create; asks you to type CREATE 10
+```
+
+The script calls `listUser`, finds the highest existing `NNN@bgyhub.com`
+(3 digits, zero-padded) and continues from the next number. For example, if
+001–003 exist, `--count 10` creates 004–013.
+
+- **Existing numbers are skipped:** any existing address, and anything in
+  `EXCLUDE_FROM_SEQUENCE` at the top of the script, is skipped. `123@bgyhub.com`
+  is in that list, so it doesn't count as the highest number.
+- **Gaps are not filled:** if 001 and 005 exist, the next number is 006.
+- **Limits:** `--count` is 1–50 per run, and the script won't go past 999.
+
+### A specific list of addresses
+
 ```sh
 python3 create_users.py --offline     # dry-run, no network at all
 python3 create_users.py               # dry-run, read-only listUser/getUser checks
-python3 create_users.py --execute     # create the missing users
+python3 create_users.py --execute     # create the missing users (asks for confirmation)
 ```
+
+### Confirmation
+
+With `--execute`, the script lists the exact addresses it will create. You
+must then type `CREATE <n>`. Anything else, or input that isn't from a
+terminal (for example piped input), cancels the run before any `createUser`
+call. There is no flag to skip this step.
 
 Always run the read-only dry-run before `--execute`. It shows what the
 script will do, and confirms that `getUser` recognises a user that doesn't

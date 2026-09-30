@@ -6,9 +6,11 @@ Existing users are skipped and never modified. Dry-run is the default; pass
 --execute to actually create users.
 
 Usage:
-    python3 create_users.py                  # dry-run, read-only API checks
-    python3 create_users.py --offline        # dry-run, no network at all
-    python3 create_users.py --execute        # create missing users
+    python3 create_users.py --count 10              # preview the next 10 numbered mailboxes
+    python3 create_users.py --count 10 --execute    # create them (asks for confirmation)
+    python3 create_users.py                         # dry-run for the addresses in users.txt
+    python3 create_users.py --offline               # users.txt dry-run, no network at all
+    python3 create_users.py --execute               # create users.txt addresses (asks for confirmation)
 """
 
 from __future__ import annotations
@@ -35,6 +37,14 @@ TOKEN_ENV = "PURELYMAIL_API_TOKEN"
 
 # Addresses this script must never touch, even if they appear in the input.
 PROTECTED = {"service@bgyhub.com"}
+
+# Numbered mailboxes (--count mode): NNN@bgyhub.com, zero-padded.
+SEQUENCE_WIDTH = 3
+SEQUENCE_RE = re.compile(r"^(\d{%d})@%s$" % (SEQUENCE_WIDTH, re.escape(DOMAIN)))
+# Existing numeric addresses that are not part of the 001, 002, ... sequence.
+# They are ignored when finding the highest number, and skipped if reached.
+EXCLUDE_FROM_SEQUENCE = {"123@bgyhub.com"}
+MAX_COUNT = 50  # per run
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_USERS_FILE = SCRIPT_DIR / "users.txt"
@@ -313,14 +323,52 @@ def validate(email: str) -> str | None:
     return None
 
 
+def plan_sequence(existing: set[str], count: int) -> list[str]:
+    """Next `count` numbered addresses after the highest existing one."""
+    numbers = sorted(
+        int(m.group(1))
+        for e in existing - EXCLUDE_FROM_SEQUENCE
+        if (m := SEQUENCE_RE.match(e))
+    )
+    shown = ", ".join(f"{n:0{SEQUENCE_WIDTH}d}" for n in numbers) or "none"
+    log.info("Existing numbered mailboxes: %s (highest: %s)", shown,
+             f"{numbers[-1]:0{SEQUENCE_WIDTH}d}" if numbers else "none")
+
+    limit = 10 ** SEQUENCE_WIDTH - 1
+    planned: list[str] = []
+    n = numbers[-1] if numbers else 0
+    while len(planned) < count:
+        n += 1
+        if n > limit:
+            raise FatalError(f"Sequence would exceed {limit:0{SEQUENCE_WIDTH}d}; nothing created")
+        email = f"{n:0{SEQUENCE_WIDTH}d}@{DOMAIN}"
+        if email in existing or email in PROTECTED:
+            log.info("%s already exists or is excluded, skipping that number", email)
+            continue
+        planned.append(email)
+    return planned
+
+
+def confirm(to_create: list[str]) -> None:
+    """Show what will be created and require the user to type CREATE <n>."""
+    print()
+    print(f"Will create {len(to_create)} mailbox(es):")
+    for e in to_create:
+        print(f"  {e}")
+    print("Settings: passwordReset=on, searchIndexing=on, welcomeEmail=off, recoveryEmail=none")
+    if not sys.stdin.isatty():
+        raise FatalError("Confirmation needs an interactive terminal; nothing created")
+    phrase = f"CREATE {len(to_create)}"
+    try:
+        answer = input(f"Type {phrase} to proceed (anything else cancels): ")
+    except EOFError:
+        answer = ""
+    if answer.strip() != phrase:
+        raise FatalError("Not confirmed; nothing created")
+    log.info("Confirmed by user: %s", phrase)
+
+
 def run(args: argparse.Namespace) -> int:
-    emails = load_emails(args.users)
-    if not emails:
-        raise FatalError(f"No addresses in {args.users}")
-
-    mode = "EXECUTE" if args.execute else ("DRY-RUN (offline)" if args.offline else "DRY-RUN (read-only API checks)")
-    log.info("Mode: %s | %d address(es) from %s", mode, len(emails), args.users.name)
-
     client = None
     existing: set[str] = set()
     if not args.offline:
@@ -328,6 +376,25 @@ def run(args: argparse.Namespace) -> int:
         log.info("Calling listUser to find existing users")
         existing = client.list_users()
         log.info("listUser returned %d existing user(s)", len(existing))
+
+    if args.count is not None:
+        emails = plan_sequence(existing, args.count)
+        source = f"--count {args.count}"
+    else:
+        emails = load_emails(args.users)
+        if not emails:
+            raise FatalError(f"No addresses in {args.users}")
+        source = args.users.name
+
+    mode = "EXECUTE" if args.execute else ("DRY-RUN (offline)" if args.offline else "DRY-RUN (read-only API checks)")
+    log.info("Mode: %s | %d address(es) from %s", mode, len(emails), source)
+
+    if args.execute:
+        to_create = [e for e in emails if validate(e) is None and e not in existing]
+        if not to_create:
+            log.info("Nothing to create")
+        else:
+            confirm(to_create)
 
     csv_path = OUTPUT_DIR / ("credentials.csv" if args.execute else "credentials.dryrun.csv")
     out = CsvLog(csv_path)
@@ -419,13 +486,21 @@ def run(args: argparse.Namespace) -> int:
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Create Purelymail users for bgyhub.com (dry-run by default).")
-    p.add_argument("--users", type=Path, default=DEFAULT_USERS_FILE, help="file with one address per line")
+    src = p.add_mutually_exclusive_group()
+    src.add_argument("--users", type=Path, default=DEFAULT_USERS_FILE, help="file with one address per line")
+    src.add_argument("--count", type=int, help=f"create the next N numbered mailboxes (1-{MAX_COUNT})")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--execute", action="store_true", help="actually create missing users")
     g.add_argument("--offline", action="store_true", help="dry-run without any network calls")
     p.add_argument("--base-url", default=API_BASE, help=argparse.SUPPRESS)  # for local testing only
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args()
+
+    if args.count is not None:
+        if not 1 <= args.count <= MAX_COUNT:
+            p.error(f"--count must be between 1 and {MAX_COUNT}")
+        if args.offline:
+            p.error("--count needs listUser to find the next number; it cannot run with --offline")
 
     if args.base_url != API_BASE and not re.match(r"^http://(127\.0\.0\.1|localhost)(:\d+)?$", args.base_url):
         p.error("--base-url may only point at localhost (testing)")
