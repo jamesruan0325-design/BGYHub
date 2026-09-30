@@ -1,0 +1,10 @@
+# Secrets
+.env
+*.env
+!.env.example
+
+# Purelymail script output (credentials, logs)
+purelymail/output/
+
+__pycache__/
+.DS_Store

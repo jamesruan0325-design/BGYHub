@@ -1,0 +1,4 @@
+# One address per line. Only @bgyhub.com is accepted; service@bgyhub.com is always refused.
+001@bgyhub.com
+002@bgyhub.com
+003@bgyhub.com
