@@ -7,28 +7,49 @@ workbook** (`.xlsx`) up to date as the master record.
 It runs only on your Mac at `http://127.0.0.1:8787`. Nothing is reachable from
 other computers.
 
-## Start it (double-click)
+## Start it (double-click, no Terminal)
 
-**First time only:**
+The app is **`BGYHub Mailbox Admin.app`**. You get it as a zip file
+(`BGYHub-Mailbox-Admin-app.zip`), or it's in this repository under
+`purelymail/mac/`.
 
-1. Make sure `purelymail/.env` contains your token: `PURELYMAIL_API_TOKEN=...`
-   (it's already there if you used the command-line script before).
-2. In Finder, open the `BGYHub/purelymail` folder and double-click
-   **`Start Mailbox Admin.command`**.
-   - If macOS says it can't be opened, right-click it, choose **Open**, then **Open** again.
-   - The first start installs what the app needs (about a minute), then opens your browser.
-   - It also puts a **BGYHub Mailbox Admin** icon on your Desktop.
-3. In the browser, create your **admin password**. It unlocks the app and
-   encrypts the stored mailbox passwords. It can't be recovered, so save it in
-   your password manager.
-4. Click **Choose workbook**, then **Find my tracking workbook**, and pick your
-   tracking file. The app searches Desktop, Documents, Downloads and iCloud Drive.
-   You can also paste the file's full path.
-5. Click **Import now** to bring in 001–003. This copies their passwords from
-   `output/credentials.csv` into the workbook and lets you reset them from the app.
+1. Double-click the zip in Finder's **Downloads** folder. This unpacks
+   **BGYHub Mailbox Admin.app**.
+2. Drag the app to your **Desktop** (or **Applications**).
+3. Double-click it. The first time, macOS blocks it because it isn't from the
+   App Store:
+   - **macOS 15 (Sequoia) or newer:** click **Done**, then open **System
+     Settings → Privacy & Security**. Scroll down to "BGYHub Mailbox Admin was
+     blocked" and click **Open Anyway**, then **Open Anyway** again (and enter
+     your Mac password if asked).
+   - **macOS 14 or older:** right-click the app, choose **Open**, then **Open**.
 
-**Every day after that:** double-click **BGYHub Mailbox Admin** on your Desktop.
-If the app is already running, the icon just opens it in the browser.
+   You only have to do this once.
+
+Each time it's opened, the app:
+
+- **Gets the code:** downloads or updates the code in `~/BGYHub`, from the
+  `claude/bold-brahmagupta-tpfvmk` branch, fast-forward only.
+- **Installs what it needs:** the first time only, which takes about a minute.
+- **Opens the browser:** goes to `http://127.0.0.1:8787`, or just opens the
+  page again if the app is already running.
+
+**First time in the browser:**
+
+1. **Create your admin password.** It unlocks the app and encrypts the stored
+   mailbox passwords. It can't be recovered, so save it in your password
+   manager.
+2. **Choose workbook → Find my tracking workbook**, and pick your tracking
+   file. You can also paste its full path.
+3. **Import now.** This copies 001–003's passwords from
+   `output/credentials.csv` into the workbook.
+
+The Purelymail token must be in `~/BGYHub/purelymail/.env` as
+`PURELYMAIL_API_TOKEN=...`. It's already there if you used the command-line
+script before. The app shows ❌ if it's missing.
+
+`Start Mailbox Admin.command` (in `purelymail/`) does the same as the app
+without the self-update step.
 
 ## Using it
 
@@ -106,7 +127,8 @@ or links to other files, because those could be lost when it saves.
 ## Files
 
 ```
-Start Mailbox Admin.command   double-click launcher (also creates the Desktop icon)
+mac/BGYHub Mailbox Admin.app  the double-click app (self-updating launcher)
+Start Mailbox Admin.command   alternative launcher
 admin/                        the web app (app.py, service.py, store.py, templates, static, launch.sh)
 tracking_xlsx.py              safe workbook updates
 mailbox_core.py               Purelymail API client, numbering, passwords (shared)
@@ -125,8 +147,7 @@ tests/                        tests against a fake Purelymail server
 | Forgot the admin password | Quit the app and delete `admin/data/admin.db`. You'll set a new password and need to import again. Mailboxes and the workbook are not affected. |
 | Something else | See `output/admin-server.log` and `output/admin.log`. |
 
-If you move the `BGYHub` folder, delete the Desktop icon and double-click
-`Start Mailbox Admin.command` again to recreate it.
+The app always uses the folder `~/BGYHub` (your home folder → BGYHub). Don't move or rename it.
 
 ## Command-line tool (advanced)
 
