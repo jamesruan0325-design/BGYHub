@@ -336,7 +336,7 @@ def main() -> None:
     setup_logging(core.OUTPUT_DIR)
     app = create_app(port=port)
     print(f"BGYHub Mailbox Admin running at http://127.0.0.1:{port}", file=sys.stderr)
-    app.run(host=HOST, port=port, debug=False, use_reloader=False, threaded=True)
+    app.run(host=HOST, port=port, debug=False, use_reloader=False, threaded=True, load_dotenv=False)
 
 
 if __name__ == "__main__":
