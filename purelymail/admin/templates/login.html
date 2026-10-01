@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BGYHub Admin · {{ "Set up" if mode == "setup" else "Unlock" }}</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%231f4e78%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-size=%2720%27 font-family=%27Arial%27 font-weight=%27bold%27 fill=%27white%27 text-anchor=%27middle%27%3EB%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body class="auth">
+  <main class="auth-card">
+    <div class="brand"><span class="brand-mark">B</span> BGYHub Admin</div>
+    {% if mode == "setup" %}
+      <h1>Create your admin password</h1>
+      <p class="muted">This password unlocks the app and encrypts the stored mailbox passwords on this Mac.
+        It cannot be recovered, so keep it in your password manager.</p>
+    {% else %}
+      <h1>Unlock</h1>
+      <p class="muted">Enter your admin password to manage Purelymail mailboxes.</p>
+    {% endif %}
+    {% if error %}<p class="alert alert-error" role="alert">{{ error }}</p>{% endif %}
+    <form method="post" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <label>Admin password
+        <input type="password" name="password" required minlength="{{ min_len if mode == 'setup' else 1 }}" autofocus
+               autocomplete="{{ 'new-password' if mode == 'setup' else 'current-password' }}">
+      </label>
+      {% if mode == "setup" %}
+        <label>Repeat password
+          <input type="password" name="password2" required minlength="{{ min_len }}" autocomplete="new-password">
+        </label>
+        <p class="hint">At least {{ min_len }} characters.</p>
+      {% endif %}
+      <button class="btn btn-primary btn-block" type="submit">{{ "Create and continue" if mode == "setup" else "Unlock" }}</button>
+    </form>
+  </main>
+</body>
+</html>

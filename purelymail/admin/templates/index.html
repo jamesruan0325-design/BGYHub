@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf }}">
+  <title>BGYHub Admin · Purelymail Mailboxes</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%231f4e78%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-size=%2720%27 font-family=%27Arial%27 font-weight=%27bold%27 fill=%27white%27 text-anchor=%27middle%27%3EB%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">B</span> BGYHub Admin</div>
+  <nav class="top-actions">
+    <button class="btn" id="btn-open-excel" type="button">Open Tracking Excel</button>
+    <button class="btn" id="btn-download-excel" type="button">Download Tracking Excel</button>
+    <button class="btn btn-ghost" id="btn-settings" type="button">Settings</button>
+    <button class="btn btn-ghost" id="btn-lock" type="button">Lock</button>
+    <button class="btn btn-ghost" id="btn-quit" type="button" title="Stop the app">Quit</button>
+  </nav>
+</header>
+
+<main class="page">
+  <h1>Purelymail Mailboxes</h1>
+
+  <section class="status-row" aria-label="Status">
+    <div class="stat"><span class="stat-label">Purelymail API token</span><span class="stat-value" id="st-token">…</span></div>
+    <div class="stat"><span class="stat-label">Tracking workbook</span><span class="stat-value" id="st-tracking">…</span></div>
+    <div class="stat"><span class="stat-label">Excel updates waiting</span><span class="stat-value" id="st-pending">…</span></div>
+  </section>
+
+  <div id="banners"></div>
+
+  <section class="card" aria-labelledby="create-title">
+    <h2 id="create-title">Create new mailboxes</h2>
+    <div class="create-form">
+      <label for="count">How many?</label>
+      <input id="count" type="number" min="1" max="{{ max_count }}" value="10" inputmode="numeric">
+      <span class="hint">1–{{ max_count }} per batch</span>
+      <button class="btn btn-primary" id="btn-preview" type="button">Preview</button>
+    </div>
+    <div id="preview" hidden>
+      <p id="preview-summary"></p>
+      <ul class="chips" id="preview-list"></ul>
+      <p class="hint">Settings for every new mailbox: password reset on · search indexing on · welcome email off · no recovery email.
+        Each gets its own random 24-character password.</p>
+      <button class="btn btn-danger" id="btn-create" type="button">Create</button>
+    </div>
+    <div id="job" hidden>
+      <div class="counters" id="job-counters"></div>
+      <p class="excel-line" id="job-excel"></p>
+      <table class="table">
+        <thead><tr><th>Mailbox</th><th>Result</th><th>Details</th></tr></thead>
+        <tbody id="job-items"></tbody>
+      </table>
+      <div class="job-actions">
+        <button class="btn" id="btn-export" type="button" hidden>Export new credentials (CSV)</button>
+        <button class="btn" id="btn-retry-excel" type="button" hidden>Retry Excel update</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="list-title">
+    <div class="card-head">
+      <h2 id="list-title">Existing @bgyhub.com mailboxes</h2>
+      <button class="btn btn-ghost" id="btn-refresh" type="button">Refresh</button>
+    </div>
+    <table class="table">
+      <thead><tr><th>Mailbox</th><th>Type</th><th>Managed since</th><th>In workbook</th><th></th></tr></thead>
+      <tbody id="mailboxes"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
+    </table>
+  </section>
+</main>
+
+<dialog id="dlg-confirm">
+  <form method="dialog">
+    <h2>Create these mailboxes?</h2>
+    <p id="confirm-text"></p>
+    <ul class="chips" id="confirm-list"></ul>
+    <p class="hint">Existing mailboxes are never changed. Passwords go to the tracking workbook only after Purelymail confirms each mailbox.</p>
+    <div class="dlg-actions">
+      <button class="btn" value="cancel">Cancel</button>
+      <button class="btn btn-danger" value="ok" id="confirm-ok">Create</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-reset">
+  <form method="dialog" id="reset-form">
+    <h2>Reset password</h2>
+    <div id="reset-ask">
+      <p>Reset the password for <strong id="reset-email"></strong>? The current password will stop working immediately.</p>
+      <label>Type the address to confirm
+        <input id="reset-confirm" autocomplete="off" spellcheck="false">
+      </label>
+      <p class="alert alert-error" id="reset-error" hidden></p>
+      <div class="dlg-actions">
+        <button class="btn" value="cancel">Cancel</button>
+        <button class="btn btn-danger" id="reset-go" type="button" disabled>Reset password</button>
+      </div>
+    </div>
+    <div id="reset-done" hidden>
+      <p id="reset-result"></p>
+      <div class="secret"><code id="reset-password"></code><button class="btn" type="button" id="reset-copy">Copy</button></div>
+      <p class="excel-line" id="reset-excel"></p>
+      <div class="dlg-actions"><button class="btn btn-primary" value="close">Done</button></div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-settings">
+  <form method="dialog">
+    <h2>Settings</h2>
+    <h3>Tracking workbook (master record)</h3>
+    <p class="muted" id="settings-current"></p>
+    <button class="btn" type="button" id="btn-find">Find my tracking workbook</button>
+    <ul class="candidates" id="candidates"></ul>
+    <label>…or paste the full path
+      <input id="manual-path" placeholder="/Users/you/Documents/BGYHub邮箱使用记录.xlsx" spellcheck="false">
+    </label>
+    <button class="btn" type="button" id="btn-use-path">Use this file</button>
+    <p class="alert alert-error" id="settings-error" hidden></p>
+    <h3>One-time import</h3>
+    <p class="muted" id="import-text"></p>
+    <button class="btn" type="button" id="btn-import" hidden>Import passwords from credentials.csv</button>
+    <div class="dlg-actions"><button class="btn btn-primary" value="close">Close</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-reauth">
+  <form method="dialog" id="reauth-form">
+    <h2>Confirm it’s you</h2>
+    <p class="muted">This file contains passwords. Enter your admin password to continue.</p>
+    <input type="password" id="reauth-password" autocomplete="current-password">
+    <p class="alert alert-error" id="reauth-error" hidden></p>
+    <div class="dlg-actions">
+      <button class="btn" value="cancel">Cancel</button>
+      <button class="btn btn-primary" id="reauth-go" type="submit" value="ok">Continue</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>

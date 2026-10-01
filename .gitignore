@@ -8,3 +8,7 @@ purelymail/output/
 
 __pycache__/
 .DS_Store
+
+# Mailbox Admin app: local database (encrypted passwords), workbook backups, Python env
+purelymail/admin/data/
+purelymail/.venv/
