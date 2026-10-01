@@ -1,8 +1,9 @@
 """Local SQLite store for the mailbox admin.
 
-Mailbox passwords are encrypted with AES-256-GCM using a random data key.
-The data key itself is only stored wrapped (encrypted) with a key derived
-from the admin password (scrypt), so the database file alone reveals nothing.
+Mailbox passwords are encrypted (admin/crypto.py: HMAC-SHA256 encrypt-then-MAC,
+standard library only) with a random 256-bit data key. The data key itself is
+only stored wrapped (encrypted) with a key derived from the admin password
+(PBKDF2-HMAC-SHA256, 600k iterations), so the database file alone reveals nothing.
 """
 
 from __future__ import annotations
@@ -14,11 +15,9 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-from cryptography.exceptions import InvalidTag
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+from admin import crypto
 
-SCRYPT_N = 2 ** 15
+KEY_AAD = b"bgyhub-data-key"
 MIN_ADMIN_PASSWORD = 12
 
 SCHEMA = """
@@ -74,6 +73,7 @@ class Store:
         with self._conn() as c:
             c.executescript(SCHEMA)
         os.chmod(self.db_path, 0o600)
+        self._check_format()
 
     @contextmanager
     def _conn(self):
@@ -107,42 +107,45 @@ class Store:
     # ------------------------------------------------------------------ admin password / data key
 
     def is_initialized(self) -> bool:
-        return self._meta("wrapped_key") is not None
+        return self._meta("wrapped_key_v2") is not None
 
-    @staticmethod
-    def _kek(password: str, salt: bytes) -> bytes:
-        return Scrypt(salt=salt, length=32, n=SCRYPT_N, r=8, p=1).derive(password.encode())
+    def _check_format(self) -> None:
+        if self._meta("wrapped_key") is not None and not self.is_initialized():
+            raise RuntimeError(f"{self.db_path} was created by an older test version of this app. "
+                               "Move it out of the data folder and start again.")
 
     def initialize(self, password: str) -> bytes:
         if self.is_initialized():
             raise RuntimeError("already initialized")
         if len(password) < MIN_ADMIN_PASSWORD:
             raise ValueError(f"admin password must be at least {MIN_ADMIN_PASSWORD} characters")
-        salt, nonce, data_key = os.urandom(16), os.urandom(12), AESGCM.generate_key(256)
-        wrapped = AESGCM(self._kek(password, salt)).encrypt(nonce, data_key, b"bgyhub-data-key")
-        self._set_meta("kdf_salt", salt.hex())
-        self._set_meta("wrapped_key", (nonce + wrapped).hex())
+        salt, data_key = os.urandom(16), crypto.new_key()
+        iterations = crypto.PBKDF2_ITERATIONS
+        wrapped = crypto.encrypt(crypto.derive_key(password, salt, iterations), data_key, KEY_AAD)
+        self._set_meta("kdf_salt_v2", salt.hex())
+        self._set_meta("kdf_iterations_v2", str(iterations))
+        self._set_meta("wrapped_key_v2", wrapped.hex())
         return data_key
 
     def unlock(self, password: str) -> bytes | None:
         """Return the data key, or None if the password is wrong."""
-        salt, blob = self._meta("kdf_salt"), self._meta("wrapped_key")
+        salt, blob = self._meta("kdf_salt_v2"), self._meta("wrapped_key_v2")
         if not salt or not blob:
             return None
-        raw = bytes.fromhex(blob)
+        iterations = int(self._meta("kdf_iterations_v2") or crypto.PBKDF2_ITERATIONS)
         try:
-            return AESGCM(self._kek(password, bytes.fromhex(salt))).decrypt(raw[:12], raw[12:], b"bgyhub-data-key")
-        except InvalidTag:
+            return crypto.decrypt(crypto.derive_key(password, bytes.fromhex(salt), iterations),
+                                  bytes.fromhex(blob), KEY_AAD)
+        except crypto.DecryptionError:
             return None
 
     @staticmethod
     def _encrypt(key: bytes, email: str, password: str) -> bytes:
-        nonce = os.urandom(12)
-        return nonce + AESGCM(key).encrypt(nonce, password.encode(), email.encode())
+        return crypto.encrypt(key, password.encode(), email.encode())
 
     @staticmethod
     def _decrypt(key: bytes, email: str, blob: bytes) -> str:
-        return AESGCM(key).decrypt(blob[:12], blob[12:], email.encode()).decode()
+        return crypto.decrypt(key, blob, email.encode()).decode()
 
     # ------------------------------------------------------------------ mailboxes
 

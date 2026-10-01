@@ -30,7 +30,9 @@ Each time it's opened, the app:
 
 - **Gets the code:** downloads or updates the code in `~/BGYHub`, from the
   `claude/bold-brahmagupta-tpfvmk` branch, fast-forward only.
-- **Installs what it needs:** the first time only, which takes about a minute.
+- **Nothing to install:** all the Python packages the app needs are bundled
+  in `vendor/`. It runs with any Python 3.9+ already on the Mac, including
+  Apple's built-in one, with no pip and no download.
 - **Opens the browser:** goes to `http://127.0.0.1:8787`, or just opens the
   page again if the app is already running.
 
@@ -108,7 +110,8 @@ or links to other files, because those could be lost when it saves.
 
 - **API token:** it stays in `purelymail/.env` on your Mac and is used only by
   the local server. It is never sent to the browser or written to any log.
-- **Stored passwords:** they're encrypted (AES-256-GCM) in `admin/data/admin.db`.
+- **Stored passwords:** they're encrypted (HMAC-SHA256 encrypt-then-MAC, keys derived with
+  PBKDF2) in `admin/data/admin.db`.
   The encryption key is unlocked by your admin password and kept only in
   memory while the app is unlocked. The app locks itself after 30 minutes of
   inactivity.
@@ -118,7 +121,7 @@ or links to other files, because those could be lost when it saves.
 - **Web protections:** the app listens on `127.0.0.1` only and rejects other
   host names. Every change requires a CSRF token, and cookies are
   same-site only.
-- **Excluded from Git:** `.env`, `output/`, `admin/data/` and `.venv/`.
+- **Excluded from Git:** `.env`, `output/` and `admin/data/`.
   This repository is **public**, so keep it that way.
 - **Plaintext copies:** the workbook and its backups hold passwords in plain
   text (file mode 600, so only your user can read them). Avoid keeping the
@@ -134,13 +137,14 @@ tracking_xlsx.py              safe workbook updates
 mailbox_core.py               Purelymail API client, numbering, passwords (shared)
 create_users.py               command-line tool (advanced, see below)
 tests/                        tests against a fake Purelymail server
+vendor/                       bundled pure-Python packages (Flask, openpyxl, …)
 ```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| "Python 3 is not installed" | Install Python from python.org, then double-click again. |
+| "No usable Python 3.9+ was found" | Install Python from python.org (or Apple's Command Line Tools), then double-click again. |
 | "Port 8787 is already used" | Another program uses that port. Quit it, or restart the Mac. |
 | Token shows ❌ Missing | Put `PURELYMAIL_API_TOKEN=...` in `purelymail/.env`, then Quit and start again. |
 | Workbook shows ❌ Problem | The message says why, for example that the sheet or table was renamed. |
@@ -162,5 +166,5 @@ python3 create_users.py --count 10 --execute   # create; asks you to type CREATE
 ## Tests
 
 ```sh
-.venv/bin/python -m unittest discover -s tests -t . -v
+python3 -m unittest discover -s tests -t . -v   # uses the bundled packages
 ```
