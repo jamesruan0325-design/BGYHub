@@ -23,6 +23,7 @@ from pathlib import Path
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_file, session, url_for
 
 import mailbox_core as core
+from admin import __version__
 from admin.service import Config, MailboxService, ServiceError
 from admin.store import MIN_ADMIN_PASSWORD, Store
 
@@ -66,7 +67,7 @@ def create_app(data_dir: Path | None = None, output_dir: Path | None = None, bas
         MAX_CONTENT_LENGTH=64 * 1024,
         PORT=port,
     )
-    data_dir = data_dir or ADMIN_DIR / "data"
+    data_dir = data_dir or core.DATA_ROOT / "admin" / "data"
     store = Store(data_dir / "admin.db")
     config = Config(data_dir=data_dir, output_dir=output_dir or core.OUTPUT_DIR, base_url=base_url)
     if search_dirs is not None:
@@ -140,7 +141,7 @@ def create_app(data_dir: Path | None = None, output_dir: Path | None = None, bas
 
     @app.get("/healthz")
     def healthz():
-        return jsonify(app=APP_ID)
+        return jsonify(app=APP_ID, version=__version__)
 
     @app.get("/")
     def index():
@@ -148,7 +149,7 @@ def create_app(data_dir: Path | None = None, output_dir: Path | None = None, bas
             return redirect(url_for("setup"))
         if not logged_in():
             return redirect(url_for("login"))
-        return render_template("index.html", csrf=csrf_token(), max_count=core.MAX_COUNT)
+        return render_template("index.html", csrf=csrf_token(), max_count=core.MAX_COUNT, version=__version__)
 
     @app.route("/setup", methods=["GET", "POST"])
     def setup():
@@ -335,7 +336,8 @@ def main() -> None:
     port = int(os.environ.get("ADMIN_PORT", DEFAULT_PORT))
     setup_logging(core.OUTPUT_DIR)
     app = create_app(port=port)
-    print(f"BGYHub Mailbox Admin running at http://127.0.0.1:{port}", file=sys.stderr)
+    print(f"BGYHub Mailbox Admin {__version__} running at http://127.0.0.1:{port} "
+          f"(code: {ADMIN_DIR.parent}, data: {core.DATA_ROOT})", file=sys.stderr)
     app.run(host=HOST, port=port, debug=False, use_reloader=False, threaded=True, load_dotenv=False)
 
 

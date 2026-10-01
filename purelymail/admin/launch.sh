@@ -11,13 +11,18 @@ set -uo pipefail
 # Apps started from Finder get a minimal PATH; add the usual Python locations.
 export PATH="/Library/Frameworks/Python.framework/Versions/Current/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
-DIR="$(cd "$(dirname "$0")/.." && pwd)"   # the purelymail/ folder
+DIR="$(cd "$(dirname "$0")/.." && pwd)"   # the code: purelymail/ (inside the .app when bundled)
+# The data (.env, output/, admin/data) can live elsewhere; the bundled app sets this to ~/BGYHub/purelymail.
+DATA="${BGYHUB_DATA_ROOT:-$DIR}"
+export BGYHUB_DATA_ROOT="$DATA"
 PORT="${ADMIN_PORT:-8787}"
 URL="http://127.0.0.1:$PORT"
-LOG="$DIR/output/admin-server.log"
+LOG="$DATA/output/admin-server.log"
 APP="$HOME/Desktop/BGYHub Mailbox Admin.app"
+VERSION="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$DIR/admin/__init__.py")"
+[ -f "$DIR/BUILD" ] && VERSION="$VERSION ($(tr '\n' ' ' < "$DIR/BUILD"| sed 's/ $//'))"
 
-mkdir -p "$DIR/output" && chmod 700 "$DIR/output"
+mkdir -p "$DATA/output" && chmod 700 "$DATA/output"
 
 log() { echo "$(date '+%F %T') [launcher] $*" >> "$LOG"; }
 notify() { osascript -e "display notification \"$1\" with title \"BGYHub Mailbox Admin\"" >/dev/null 2>&1 || true; }
@@ -42,7 +47,7 @@ if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   fail "Port $PORT is already used by another program. Restart the Mac, then try again."
 fi
 
-log "starting; macOS $(sw_vers -productVersion 2>/dev/null || uname -r), $(uname -m)"
+log "starting version $VERSION (bundled packages, no install step); code: $DIR; data: $DATA; macOS $(sw_vers -productVersion 2>/dev/null || uname -r), $(uname -m)"
 
 # Pick the first Python 3.9+ that can load the app with the bundled packages.
 # Probing the app's own imports (not just the version) catches broken installs.
@@ -61,7 +66,7 @@ for candidate in \
     log "skip $candidate (Command Line Tools not installed)"
     continue
   fi
-  if out="$(cd "$DIR" && "$candidate" -s -c "$PROBE" 2>&1)"; then
+  if out="$(cd "$DIR" && "$candidate" -B -s -c "$PROBE" 2>&1)"; then
     PYTHON="$candidate"
     break
   fi
@@ -72,7 +77,8 @@ log "using $PYTHON ($("$PYTHON" -c 'import sys; print(sys.version.split()[0])'))
 
 cd "$DIR" || fail "Cannot open $DIR"
 # -s: ignore per-user site-packages, so only the bundled packages are used.
-nohup "$PYTHON" -s -m admin.app >>"$LOG" 2>&1 &
+# -B: don't write .pyc files (the .app may be on a read-only location).
+nohup "$PYTHON" -B -s -m admin.app >>"$LOG" 2>&1 &
 SERVER_PID=$!
 
 for _ in $(seq 1 60); do

@@ -12,3 +12,6 @@ __pycache__/
 # Mailbox Admin app: local database (encrypted passwords), workbook backups, Python env
 purelymail/admin/data/
 purelymail/.venv/
+
+# Built Mac app (see purelymail/mac/build_app.sh)
+purelymail/mac/dist/

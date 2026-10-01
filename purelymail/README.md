@@ -9,32 +9,30 @@ other computers.
 
 ## Start it (double-click, no Terminal)
 
-The app is **`BGYHub Mailbox Admin.app`**. You get it as a zip file
-(`BGYHub-Mailbox-Admin-app.zip`), or it's in this repository under
-`purelymail/mac/`.
+The app is **`BGYHub Mailbox Admin v2.app`**, delivered as
+`BGYHub-Mailbox-Admin-v2.zip`.
 
-1. Double-click the zip in Finder's **Downloads** folder. This unpacks
-   **BGYHub Mailbox Admin.app**.
-2. Drag the app to your **Desktop** (or **Applications**).
-3. Double-click it. The first time, macOS blocks it because it isn't from the
-   App Store:
+It is **self-contained**: the app's code and all the Python packages it needs
+are inside the `.app`. Double-clicking it doesn't run `git`, doesn't install
+anything (no pip, no download), and doesn't use the code in `~/BGYHub`. It
+only reads and writes your **data** in `~/BGYHub/purelymail`: `.env`,
+`output/` and `admin/data/`. It needs a Python 3.9+ already on the Mac;
+Apple's built-in one is enough.
+
+1. Double-click the zip in **Downloads**. This unpacks
+   **BGYHub Mailbox Admin v2**.
+2. Drag it to your **Desktop** or **Applications**. You can drag the old
+   "BGYHub Mailbox Admin" (without v2) to the Trash.
+3. Double-click it. The first time, macOS asks you to confirm:
    - **macOS 15 (Sequoia) or newer:** click **Done**, then open **System
-     Settings → Privacy & Security**. Scroll down to "BGYHub Mailbox Admin was
-     blocked" and click **Open Anyway**, then **Open Anyway** again (and enter
-     your Mac password if asked).
+     Settings → Privacy & Security**, scroll down and click **Open Anyway**.
    - **macOS 14 or older:** right-click the app, choose **Open**, then **Open**.
 
-   You only have to do this once.
+The start-up log `~/BGYHub/purelymail/output/admin-server.log` begins each
+start with `starting version 2.0 (... commit=...)`, so you can see which build
+ran.
 
-Each time it's opened, the app:
-
-- **Gets the code:** downloads or updates the code in `~/BGYHub`, from the
-  `claude/bold-brahmagupta-tpfvmk` branch, fast-forward only.
-- **Nothing to install:** all the Python packages the app needs are bundled
-  in `vendor/`. It runs with any Python 3.9+ already on the Mac, including
-  Apple's built-in one, with no pip and no download.
-- **Opens the browser:** goes to `http://127.0.0.1:8787`, or just opens the
-  page again if the app is already running.
+To rebuild the app from this repository: `purelymail/mac/build_app.sh`.
 
 **First time in the browser:**
 
@@ -130,7 +128,7 @@ or links to other files, because those could be lost when it saves.
 ## Files
 
 ```
-mac/BGYHub Mailbox Admin.app  the double-click app (self-updating launcher)
+mac/build_app.sh              builds the self-contained BGYHub Mailbox Admin v2.app (template in mac/template/)
 Start Mailbox Admin.command   alternative launcher
 admin/                        the web app (app.py, service.py, store.py, templates, static, launch.sh)
 tracking_xlsx.py              safe workbook updates

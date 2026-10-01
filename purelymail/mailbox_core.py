@@ -36,9 +36,13 @@ EXCLUDE_FROM_SEQUENCE = {"123@bgyhub.com"}
 MAX_COUNT = 50  # per run
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+# Where .env, output/ and the admin app's data live. Defaults to this folder;
+# the bundled Mac app sets BGYHUB_DATA_ROOT=~/BGYHub/purelymail because its
+# code runs from inside the .app.
+DATA_ROOT = Path(os.environ.get("BGYHUB_DATA_ROOT") or SCRIPT_DIR).expanduser()
 DEFAULT_USERS_FILE = SCRIPT_DIR / "users.txt"
-ENV_FILE = SCRIPT_DIR / ".env"
-OUTPUT_DIR = SCRIPT_DIR / "output"
+ENV_FILE = DATA_ROOT / ".env"
+OUTPUT_DIR = DATA_ROOT / "output"
 CSV_FIELDS = ["email", "password", "status", "created_at"]
 
 MIN_REQUEST_INTERVAL = 2.0  # seconds between any two API requests

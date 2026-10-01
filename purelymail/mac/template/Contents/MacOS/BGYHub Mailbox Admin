@@ -1,0 +1,9 @@
+#!/bin/bash
+# BGYHub Mailbox Admin (self-contained build).
+# Everything the app runs is inside this .app (Contents/Resources/purelymail):
+# no git, no pip, no download, and nothing is read from ~/BGYHub's code.
+# Your data stays where it was: ~/BGYHub/purelymail (.env, output/, admin/data).
+CONTENTS="$(cd "$(dirname "$0")/.." && pwd)"
+export BGYHUB_DATA_ROOT="${BGYHUB_DATA_ROOT:-$HOME/BGYHub/purelymail}"
+mkdir -p "$BGYHUB_DATA_ROOT"
+exec /bin/bash "$CONTENTS/Resources/purelymail/admin/launch.sh"
