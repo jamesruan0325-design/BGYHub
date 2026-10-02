@@ -15,11 +15,17 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.0</string>
+	<string>2.1</string>
 	<key>CFBundleVersion</key>
-	<string>2.0</string>
+	<string>2.1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>11.0</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>BGYHub Mailbox Admin reads and updates your BGYHub email tracking workbook.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>BGYHub Mailbox Admin reads and updates your BGYHub email tracking workbook.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>BGYHub Mailbox Admin reads and updates your BGYHub email tracking workbook.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 </dict>

@@ -46,7 +46,13 @@ PASSWORD_COLUMN_WIDTH = 28
 KEEP_BACKUPS = 200
 SEARCH_MAX_DEPTH = 3
 SEARCH_MAX_FILES = 300
-SEARCH_SKIP_DIRS = {"Library", "node_modules", ".git", ".venv", "Applications"}
+SEARCH_SKIP_DIRS = {"Library", "node_modules", ".git", ".venv", "Applications", "backups", "vendor"}
+
+PRIVACY_HINT = ("macOS privacy settings blocked access to this location. Move the workbook into the "
+                "BGYHub folder in your home folder (not protected), or allow access in System Settings → "
+                "Privacy & Security → Files and Folders.")
+
+
 
 
 class TrackingError(Exception):
@@ -121,8 +127,11 @@ def _load(path: Path):
     """Load the workbook, refusing anything openpyxl would silently drop."""
     if path.suffix.lower() != ".xlsx":
         raise TrackingError(f"{path.name}: only .xlsx files are supported")
-    if not path.is_file():
-        raise TrackingError(f"{path}: file not found")
+    try:
+        if not path.is_file():
+            raise TrackingError(f"{path}: file not found")
+    except PermissionError:  # Python 3.9 raises for EPERM (macOS privacy) instead of returning False
+        raise TrackingError(f"{path.name}: {PRIVACY_HINT}") from None
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         try:
@@ -178,8 +187,9 @@ def describe(path: Path) -> dict:
     """Validation summary for the UI. Never raises."""
     path = Path(path).expanduser()
     info = {"path": str(path), "valid": False, "reason": "", "rows": 0, "has_password_column": False,
-            "emails": {}, "open_in_excel": bool(path.exists() and excel_lock_files(path))}
+            "emails": {}, "open_in_excel": False}
     try:
+        info["open_in_excel"] = bool(path.exists() and excel_lock_files(path))
         wb = _load(path)
         ws, table, last_row, has_pw = _locate_table(wb)
         info.update(valid=True, rows=last_row - 1, has_password_column=has_pw,
@@ -192,18 +202,35 @@ def describe(path: Path) -> dict:
             }
     except TrackingError as e:
         info["reason"] = str(e)
+    except PermissionError:
+        info["reason"] = f"{path.name}: {PRIVACY_HINT}"
+    except OSError as e:
+        info["reason"] = f"{path.name}: cannot be read ({e.strerror or e})"
     return info
 
 
-def find_candidates(search_dirs: list[Path]) -> list[dict]:
-    """Workbooks that have the tracking sheet + table. The user picks one."""
+def find_candidates(search_dirs: list[Path], blocked: list | None = None) -> list[dict]:
+    """Workbooks that have the tracking sheet + table. The user picks one.
+
+    Folders macOS privacy settings refuse to list are appended to `blocked`.
+    """
     found, examined = [], 0
+    blocked = blocked if blocked is not None else []
+
+    def on_error(err: OSError) -> None:
+        if isinstance(err, PermissionError) and err.filename:
+            blocked.append(str(err.filename))
+
     for root in search_dirs:
         root = Path(root).expanduser()
-        if not root.is_dir():
+        try:
+            if not root.is_dir():
+                continue
+        except PermissionError:
+            blocked.append(str(root))
             continue
         base_depth = len(root.parts)
-        for dirpath, dirnames, filenames in os.walk(root):
+        for dirpath, dirnames, filenames in os.walk(root, onerror=on_error):
             depth = len(Path(dirpath).parts) - base_depth
             dirnames[:] = [d for d in dirnames if not d.startswith(".") and d not in SEARCH_SKIP_DIRS
                            and depth < SEARCH_MAX_DEPTH]

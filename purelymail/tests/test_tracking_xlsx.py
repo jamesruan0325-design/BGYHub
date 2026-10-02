@@ -214,6 +214,38 @@ class TrackingTests(unittest.TestCase):
         ws = openpyxl.load_workbook(self.wb).active
         self.assertEqual(str(ws.data_validations.dataValidation[0].sqref), "B2:B5")
 
+    def test_macos_privacy_block_is_reported_not_raised(self):
+        # macOS returns EPERM for Desktop/Documents/Downloads without permission;
+        # Python 3.9's Path.exists()/is_file() raise PermissionError for that.
+        err = PermissionError(1, "Operation not permitted")
+        with mock.patch.object(T.Path, "exists", side_effect=err), \
+             mock.patch.object(T.Path, "is_file", side_effect=err):
+            info = T.describe(self.wb)
+        self.assertFalse(info["valid"])
+        self.assertIn("Privacy", info["reason"])
+
+    def test_find_reports_blocked_folders(self):
+        blocked = []
+        locked = self.dir / "Documents"
+        locked.mkdir()
+        real_walk = T.os.walk
+
+        def fake_walk(top, onerror=None):
+            if Path(top) == locked:
+                onerror(PermissionError(1, "Operation not permitted", str(locked)))
+                return iter(())
+            return real_walk(top, onerror=onerror)
+
+        with mock.patch.object(T.os, "walk", side_effect=fake_walk):
+            found = T.find_candidates([locked, self.dir], blocked)
+        self.assertEqual(blocked, [str(locked)])
+        self.assertIn(self.wb.name, [Path(f["path"]).name for f in found])
+
+    def test_find_skips_backups(self):
+        (self.dir / "backups").mkdir()
+        make_workbook(self.dir / "backups" / "old.xlsx")
+        self.assertEqual([Path(f["path"]).name for f in T.find_candidates([self.dir])], [self.wb.name])
+
     def test_find_candidates(self):
         (self.dir / "sub").mkdir()
         other = self.dir / "sub" / "other.xlsx"

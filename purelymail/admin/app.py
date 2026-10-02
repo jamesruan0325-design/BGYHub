@@ -279,7 +279,7 @@ def create_app(data_dir: Path | None = None, output_dir: Path | None = None, bas
     @app.get("/api/tracking/candidates")
     def api_candidates():
         require_login()
-        return jsonify(candidates=service.find_tracking_candidates())
+        return jsonify(service.find_tracking_candidates())
 
     @app.post("/api/tracking/select")
     def api_select():

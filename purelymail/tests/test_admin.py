@@ -271,6 +271,15 @@ class AdminAppTests(unittest.TestCase):
         self.assertEqual(rows["005@bgyhub.com"][6], self.fake.passwords["005@bgyhub.com"])
         self.assertEqual(self.get("/api/status").json["excel_pending"], 0)
 
+    def test_select_workbook_privacy_block_is_a_clear_400(self):
+        from unittest import mock
+        import tracking_xlsx
+        self.setup_admin()
+        with mock.patch.object(tracking_xlsx.Path, "exists", side_effect=PermissionError(1, "Operation not permitted")):
+            r = self.post("/api/tracking/select", {"path": str(self.workbook)})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Privacy", r.json["error"])
+
     def test_preview_rules(self):
         self.setup_admin()
         self.assertEqual(self.post("/api/preview", {"count": 0}).status_code, 400)

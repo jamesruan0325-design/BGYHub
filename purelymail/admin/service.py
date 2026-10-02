@@ -26,7 +26,7 @@ from admin.store import Store, now
 log = logging.getLogger("purelymail.admin")
 
 PLAN_TTL = 600  # seconds a preview stays valid
-DEFAULT_SEARCH_DIRS = ["~/Desktop", "~/Documents", "~/Downloads",
+DEFAULT_SEARCH_DIRS = ["~/BGYHub", "~/Desktop", "~/Documents", "~/Downloads",
                        "~/Library/Mobile Documents/com~apple~CloudDocs"]
 
 
@@ -466,8 +466,11 @@ class MailboxService:
         info.pop("emails", None)
         return info
 
-    def find_tracking_candidates(self) -> list[dict]:
-        return tracking_xlsx.find_candidates([Path(d) for d in self.config.search_dirs])
+    def find_tracking_candidates(self) -> dict:
+        blocked: list[str] = []
+        found = tracking_xlsx.find_candidates([Path(d) for d in self.config.search_dirs], blocked)
+        return {"candidates": found, "blocked": sorted(set(blocked)),
+                "blocked_hint": tracking_xlsx.PRIVACY_HINT if blocked else ""}
 
     def dismiss_pending(self, pending_id: int) -> None:
         self.store.clear_excel([pending_id])

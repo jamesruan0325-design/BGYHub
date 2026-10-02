@@ -361,12 +361,15 @@ async function selectWorkbook(path) {
 
 async function findCandidates() {
   $("btn-find").disabled = true;
-  $("btn-find").textContent = "Searching Desktop, Documents, Downloads, iCloud Drive…";
+  $("btn-find").textContent = "Searching BGYHub, Desktop, Documents, Downloads, iCloud Drive…";
   try {
-    const { candidates } = await api("GET", "/api/tracking/candidates");
+    const { candidates, blocked, blocked_hint } = await api("GET", "/api/tracking/candidates");
     const list = $("candidates");
     list.replaceChildren();
     if (!candidates.length) list.append(el("li", { text: "No matching workbook found. Paste its path below.", className: "muted" }));
+    if (blocked && blocked.length) {
+      list.append(el("li", { className: "alert alert-warn", text: `Could not search ${blocked.map((d) => d.split("/").pop()).join(", ")}: ${blocked_hint}` }));
+    }
     for (const c of candidates) {
       const btn = el("button", { className: "btn btn-small", text: "Use this" });
       btn.type = "button";
