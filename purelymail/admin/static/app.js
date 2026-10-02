@@ -410,6 +410,10 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-settings").onclick = openSettings;
   $("btn-find").onclick = findCandidates;
   $("btn-use-path").onclick = () => selectWorkbook($("manual-path").value.trim());
+  $("btn-use-path").disabled = true;
+  $("manual-path").addEventListener("input", () => {
+    $("btn-use-path").disabled = !$("manual-path").value.trim();
+  });
   $("btn-import").onclick = runImport;
   $("btn-open-excel").onclick = async () => {
     try { await api("POST", "/api/tracking/open"); toast("Opening… close Excel again before creating or resetting."); }

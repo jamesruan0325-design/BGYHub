@@ -280,6 +280,15 @@ class AdminAppTests(unittest.TestCase):
         self.assertEqual(r.status_code, 400)
         self.assertIn("Privacy", r.json["error"])
 
+    def test_select_workbook_empty_or_bad_path_is_a_clear_400(self):
+        self.setup_admin()
+        for p in ("", "   ", '""', str(self.dir / "missing.xlsx"), str(self.dir)):
+            r = self.post("/api/tracking/select", {"path": p})
+            self.assertEqual(r.status_code, 400, p)
+            self.assertTrue(r.json["error"], p)
+        r = self.post("/api/tracking/select", {"path": f'"{self.workbook}"'})  # Finder "Copy as Pathname" + quotes
+        self.assertEqual(r.status_code, 200)
+
     def test_preview_rules(self):
         self.setup_admin()
         self.assertEqual(self.post("/api/preview", {"count": 0}).status_code, 400)

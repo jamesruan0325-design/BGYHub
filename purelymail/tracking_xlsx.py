@@ -206,6 +206,8 @@ def describe(path: Path) -> dict:
         info["reason"] = f"{path.name}: {PRIVACY_HINT}"
     except OSError as e:
         info["reason"] = f"{path.name}: cannot be read ({e.strerror or e})"
+    except ValueError as e:  # e.g. a path with no file name
+        info["reason"] = f"{path}: not a workbook path ({e})"
     return info
 
 

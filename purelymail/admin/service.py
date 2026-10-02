@@ -457,6 +457,9 @@ class MailboxService:
     # ------------------------------------------------------------------ tracking workbook
 
     def set_tracking_path(self, path_str: str) -> dict:
+        path_str = (path_str or "").strip().strip('"').strip("'")
+        if not path_str:
+            raise ServiceError("Paste the full path of the workbook first, e.g. /Users/you/BGYHub/BGYHub邮箱使用记录.xlsx")
         path = Path(path_str).expanduser()
         info = tracking_xlsx.describe(path)
         if not info["valid"]:
