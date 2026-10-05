@@ -274,7 +274,7 @@ def _snapshot(wb) -> dict:
         t = ws.title
         for row in ws.iter_rows():
             for c in row:
-                if c.value is not None:
+                if not _blank(c.value):  # "" / whitespace-only count as empty (Excel, WPS, Numbers vary)
                     snap["cells"][(t, c.coordinate)] = _as_date(c.value)
                 if c.has_style:
                     snap["styles"][(t, c.coordinate)] = _style_sig(c)
@@ -301,7 +301,8 @@ def _verify(before: dict, after: dict, changed: dict, expect_tables: dict, expec
         if key in changed:
             continue
         if after["cells"].get(key) != val:
-            problems.append(f"existing cell {key[0]}!{key[1]} changed")
+            problems.append(f"existing cell {key[0]}!{key[1]} changed "
+                            f"({val!r} -> {after['cells'].get(key)!r})")
     for key, val in before["styles"].items():
         if key not in changed and after["styles"].get(key) != val:
             problems.append(f"formatting of {key[0]}!{key[1]} changed")
