@@ -19,7 +19,8 @@ PORT="${ADMIN_PORT:-8787}"
 URL="http://127.0.0.1:$PORT"
 LOG="$DATA/output/admin-server.log"
 APP="$HOME/Desktop/BGYHub Mailbox Admin.app"
-VERSION="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$DIR/admin/__init__.py")"
+CODE_VERSION="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$DIR/admin/__init__.py")"
+VERSION="$CODE_VERSION"
 [ -f "$DIR/BUILD" ] && VERSION="$VERSION ($(tr '\n' ' ' < "$DIR/BUILD"| sed 's/ $//'))"
 
 mkdir -p "$DATA/output" && chmod 700 "$DATA/output"
@@ -33,6 +34,21 @@ fail() {
   exit 1
 }
 running() { curl -fsS --max-time 2 "$URL/healthz" 2>/dev/null | grep -q "bgyhub-mailbox-admin"; }
+running_version() { curl -fsS --max-time 2 "$URL/healthz" 2>/dev/null | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p'; }
+
+# Stop an older copy of this app that is still running, so double-clicking a
+# newer build really starts the newer code (it uses the same data).
+stop_old_server() {
+  local pids
+  pids="$(lsof -nP -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null)"
+  [ -n "$pids" ] || pids="$(pgrep -f -- "-m admin.app" 2>/dev/null)"
+  [ -n "$pids" ] && kill $pids 2>/dev/null
+  for _ in $(seq 1 20); do
+    running || return 0
+    sleep 0.5
+  done
+  return 1
+}
 
 if [ "${1:-}" = "--install-app" ] && [ ! -d "$APP" ]; then
   osacompile -o "$APP" -e "do shell script quoted form of \"$DIR/admin/launch.sh\"" >/dev/null 2>&1 \
@@ -40,8 +56,13 @@ if [ "${1:-}" = "--install-app" ] && [ ! -d "$APP" ]; then
 fi
 
 if running; then
-  open "$URL"
-  exit 0
+  RUNNING_VERSION="$(running_version)"
+  if [ "$RUNNING_VERSION" = "$CODE_VERSION" ]; then
+    open "$URL"
+    exit 0
+  fi
+  log "version ${RUNNING_VERSION:-unknown} is running; stopping it to start $CODE_VERSION"
+  stop_old_server || fail "An older version of the app is still running and could not be stopped. Restart the Mac, then try again."
 fi
 if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   fail "Port $PORT is already used by another program. Restart the Mac, then try again."
