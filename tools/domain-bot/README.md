@@ -67,6 +67,7 @@ python3 domain_bot.py buy myname --tlds xyz,site,com --max-price 3 --no-auto-ren
 
 - **看续费价**：很多后缀首年 1–2 美元，续费却要 15–30 美元。用 `--max-renewal`、`--years` 或 `--no-auto-renew` 控制。
 - **溢价域名买不了**：Porkbun 的 API 不能注册标记为 premium 的域名（例如约 1 美元的纯数字 `.xyz`），机器人会自动跳过，这类域名需要在网页上购买。
+- **Handshake 后缀会被排除**：Porkbun 也卖 `.vvip`、`.c` 这类不属于正常 DNS 的后缀，很便宜但普通浏览器和邮件服务器无法解析，机器人不会列出也不会购买。
 - **账号侧限额**：Porkbun 对 API 默认有每月 100 美元的消费上限，可在 API 设置页调整。
 - **不要大量扫描**：只查不买的大批量查询会被 Porkbun 限流 24 小时。
 - 注册为注册局规定的最短年限（通常 1 年），WHOIS 隐私默认开启。

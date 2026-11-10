@@ -115,8 +115,22 @@ def check(domains):
     return found, invalid
 
 
+def special_tlds(domains):
+    """TLDs outside the normal DNS (Handshake): cheap, but they do not resolve
+    for ordinary browsers or mail servers, so they are useless for email."""
+    tlds = sorted({d.rsplit(".", 1)[-1] for d in domains})
+    if not tlds:
+        return set()
+    try:
+        res = call("/pricing/get", {"tlds": tlds}, auth=False)
+    except ApiError:
+        return set()
+    return {t for t, p in res.get("pricing", {}).items() if p.get("specialType")}
+
+
 def offers(found, years):
     """Turn check results into sortable rows for the available names."""
+    special = special_tlds([d for d, i in found.items() if i.get("avail") == "yes"])
     rows = []
     for domain, info in found.items():
         if info.get("avail") != "yes":
@@ -130,6 +144,7 @@ def offers(found, years):
                 "renewal": renewal,
                 "total": price + renewal * (years - 1),
                 "premium": info.get("premium") == "yes",
+                "special": domain.rsplit(".", 1)[-1] in special,
             }
         )
     rows.sort(key=lambda r: (r["total"], r["domain"]))
@@ -137,6 +152,8 @@ def offers(found, years):
 
 
 def eligible(row, args):
+    if row["special"]:
+        return "Handshake TLD: does not work on the normal internet"
     if row["premium"]:
         return "premium names cannot be bought through the API"
     if row["price"] > args.max_price:
@@ -149,7 +166,7 @@ def eligible(row, args):
 def print_rows(rows, years, args=None):
     print(f"{'domain':<34}{'1st year':>10}{'renewal':>10}{f'{years}y total':>11}  note")
     for r in rows:
-        note = (eligible(r, args) or "") if args else ("premium" if r["premium"] else "")
+        note = (eligible(r, args) or "") if args else ("not real DNS" if r["special"] else "premium" if r["premium"] else "")
         print(f"{r['domain']:<34}{r['price']:>10}{r['renewal']:>10}{r['total']:>11}  {note}")
 
 
@@ -162,6 +179,8 @@ def cmd_prices(args):
         except Exception:
             continue
         if reg <= 0:  # listed but not on sale yet
+            continue
+        if p.get("specialType"):  # Handshake names: not part of the normal DNS
             continue
         if args.max_renewal is not None and ren > args.max_renewal:
             continue
