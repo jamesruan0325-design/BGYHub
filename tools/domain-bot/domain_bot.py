@@ -398,13 +398,8 @@ def cloudflare_connect(domains):
     Cloudflare account, copies the DNS records and repoints the nameservers."""
     res = call("/cloudflare/connect", {"domains": domains}, idempotency_key=str(uuid.uuid4()))
     for group in ("queued", "alreadyQueued", "skipped"):
-        for item in res.get(group) or []:
-            if isinstance(item, dict):
-                name = item.get("domain", "?")
-                why = item.get("reason") or item.get("message") or ""
-            else:
-                name, why = item, ""
-            print(f"Cloudflare {group}: {name} {why}".rstrip())
+        for name, why in (res.get(group) or {}).items():  # {domain: note}
+            print(f"Cloudflare {group}: {name}. {why}".rstrip(". "))
     print(
         "The move runs in the background: minutes for the zone, up to 72h for\n"
         "Cloudflare to mark it active. Check with:  domain_bot.py cloudflare status <domain>"
@@ -425,9 +420,9 @@ def cmd_cloudflare(args):
         except ApiError as err:
             print(f"{domain}: {err}")
             continue
-        row = res.get("domain") if isinstance(res.get("domain"), dict) else res
+        row = res.get("queue") or {}
         print(f"{domain}: {row.get('status')} {row.get('message') or ''}".rstrip())
-        ns = row.get("assignedNameservers") or row.get("nameservers")
+        ns = row.get("assignedNameservers")
         if ns:
             print("  nameservers: " + ", ".join(ns))
 
