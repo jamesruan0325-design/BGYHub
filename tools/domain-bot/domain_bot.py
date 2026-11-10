@@ -39,6 +39,7 @@ MAX_COUNT = 10  # hard ceiling on registrations per run
 DEFAULT_TLDS = "xyz,site,online,store,click,fun,space,website,com"
 AUTO_NAMES = 2  # random names x cheapest TLDs = one bulk check
 AUTO_TLDS = 5
+ACCOUNT_ERRORS = {"VERIFICATION_REQUIRED", "MONTHLY_SPEND_LIMIT_EXCEEDED", "INSUFFICIENT_PERMISSIONS"}
 LABEL = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
 
 
@@ -306,6 +307,8 @@ def cmd_buy(args):
                 {"cost": 0, "agreeToTerms": "yes", "dryRun": True},
             )
         except ApiError as err:
+            if err.code in ACCOUNT_ERRORS:  # same answer for every name: stop here
+                sys.exit(f"Porkbun refused the registration: {err}\nFix this at https://porkbun.com/account and run again.")
             print(f"- {domain}: cannot be registered ({err})")
             continue
         cost = quote["cost"]
