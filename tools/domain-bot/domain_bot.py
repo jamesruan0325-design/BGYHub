@@ -11,9 +11,13 @@ No third-party packages needed. Credentials come from the environment:
 
 Commands:
 
-    prices   cheapest TLDs by list price (no key needed)
-    check    availability and price of candidate names
-    buy      register the cheapest matches (trial run unless --confirm)
+    prices      cheapest TLDs by list price (no key needed)
+    check       availability and price of candidate names
+    buy         register the cheapest matches (trial run unless --confirm)
+    cloudflare  move a registered domain's DNS to your Cloudflare account
+
+Give check/buy no names and they invent random ones and try them on the
+cheapest TLDs currently on sale.
 """
 
 import argparse
@@ -21,6 +25,7 @@ import datetime
 import json
 import os
 import re
+import secrets
 import sys
 import time
 import urllib.error
@@ -32,6 +37,8 @@ API = "https://api.porkbun.com/api/json/v3"
 BULK_CHECK_SIZE = 25  # API maximum per checkDomain call
 MAX_COUNT = 10  # hard ceiling on registrations per run
 DEFAULT_TLDS = "xyz,site,online,store,click,fun,space,website,com"
+AUTO_NAMES = 2  # random names x cheapest TLDs = one bulk check
+AUTO_TLDS = 5
 LABEL = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
 
 
@@ -98,21 +105,81 @@ def expand(names, tlds):
     return out
 
 
+def check_batch(domains):
+    """One bulk call, split per TLD when a slow registry makes the batch too big."""
+    try:
+        return [call("/domain/checkDomain", {"domains": domains})]
+    except ApiError as err:
+        if err.code != "BULK_CHECK_TOO_SLOW" or len(domains) == 1:
+            raise
+    by_tld = {}
+    for d in domains:
+        by_tld.setdefault(d.rsplit(".", 1)[-1], []).append(d)
+    if len(by_tld) == 1:  # a one-domain-per-command registry such as .de
+        return [r for d in domains for r in check_batch([d])]
+    return [r for group in by_tld.values() for r in check_batch(group)]
+
+
 def check(domains):
     """Return ({domain: info}, [invalid entries]) using the bulk endpoint."""
     found, invalid = {}, []
     for i in range(0, len(domains), BULK_CHECK_SIZE):
         pending = domains[i : i + BULK_CHECK_SIZE]
         for _ in range(2):  # 'unresolved' means the registry timed out: retry once
-            res = call("/domain/checkDomain", {"domains": pending})
-            found.update(res.get("domains") or {})
-            invalid.extend(res.get("invalid") or [])
-            pending = res.get("unresolved") or []
+            unresolved = []
+            for res in check_batch(pending):
+                found.update(res.get("domains") or {})
+                invalid.extend(res.get("invalid") or [])
+                unresolved.extend(res.get("unresolved") or [])
+            pending = unresolved
             if not pending:
                 break
         for d in pending:
             invalid.append({"domain": d, "reason": "registry did not answer"})
     return found, invalid
+
+
+def tld_prices(years, max_renewal=None):
+    """Normal-DNS TLDs on sale, cheapest first: [(total, first year, renewal, tld)]."""
+    res = call("/pricing/get", auth=False)
+    rows = []
+    for tld, p in res["pricing"].items():
+        try:
+            reg, ren = Decimal(p["registration"]), Decimal(p["renewal"])
+        except Exception:
+            continue
+        if reg <= 0:  # listed but not on sale yet
+            continue
+        if p.get("specialType"):  # Handshake names: not part of the normal DNS
+            continue
+        if max_renewal is not None and ren > max_renewal:
+            continue
+        rows.append((reg + ren * (years - 1), reg, ren, tld))
+    rows.sort()
+    return rows
+
+
+def random_name():
+    """A pronounceable throwaway label such as 'kovamiru42'."""
+    word = "".join(
+        secrets.choice("bdfgklmnprstvz") + secrets.choice("aeiou") for _ in range(4)
+    )
+    return f"{word}{secrets.randbelow(90) + 10}"
+
+
+def candidates(args):
+    """Domains to look at: the user's names, or random ones on the cheapest TLDs."""
+    if args.names:
+        return expand(args.names, (args.tlds or DEFAULT_TLDS).split(","))
+    if args.tlds:
+        tlds = args.tlds.split(",")
+    else:
+        skip = {t.strip().lower().lstrip(".") for t in args.exclude_tlds.split(",")}
+        cheapest = tld_prices(args.years, getattr(args, "max_renewal", None))
+        tlds = [row[3] for row in cheapest if row[3] not in skip][:AUTO_TLDS]
+    names = [random_name() for _ in range(AUTO_NAMES)]
+    print(f"No names given: trying random names on {', '.join('.' + t for t in tlds)}\n")
+    return expand(names, tlds)
 
 
 def special_tlds(domains):
@@ -171,21 +238,7 @@ def print_rows(rows, years, args=None):
 
 
 def cmd_prices(args):
-    res = call("/pricing/get", auth=False)
-    rows = []
-    for tld, p in res["pricing"].items():
-        try:
-            reg, ren = Decimal(p["registration"]), Decimal(p["renewal"])
-        except Exception:
-            continue
-        if reg <= 0:  # listed but not on sale yet
-            continue
-        if p.get("specialType"):  # Handshake names: not part of the normal DNS
-            continue
-        if args.max_renewal is not None and ren > args.max_renewal:
-            continue
-        rows.append((reg + ren * (args.years - 1), reg, ren, tld))
-    rows.sort()
+    rows = tld_prices(args.years, args.max_renewal)
     print(f"{'tld':<16}{'1st year':>10}{'renewal':>10}{f'{args.years}y total':>11}")
     for total, reg, ren, tld in rows[: args.top]:
         print(f"{'.' + tld:<16}{reg:>10}{ren:>10}{total:>11}")
@@ -193,7 +246,7 @@ def cmd_prices(args):
 
 
 def cmd_check(args):
-    domains = expand(args.names, args.tlds.split(","))
+    domains = candidates(args)
     found, invalid = check(domains)
     rows = offers(found, args.years)
     if rows:
@@ -226,7 +279,9 @@ def cmd_buy(args):
     mode += ", real purchase" if args.confirm else ", trial run: nothing will be bought"
     print(f"[{mode}]\n")
 
-    domains = expand(args.names, args.tlds.split(","))
+    use_cloudflare = args.cloudflare and cloudflare_ready()
+
+    domains = candidates(args)
     found, invalid = check(domains)
     rows = offers(found, args.years)
     for bad in invalid:
@@ -307,11 +362,71 @@ def cmd_buy(args):
     total = Decimal(spent_cents) / 100
     if args.confirm:
         print(f"\nRegistered {len(bought)} domain(s), spent ${total}. Log: {args.log}")
+        if use_cloudflare and bought:
+            print()
+            cloudflare_connect(bought)
     else:
         print(f"\nTrial run: would register {len(bought)} domain(s) for ${total}.")
         print("Re-run with --confirm --agree-to-terms to buy.")
     if failed or not bought:
         sys.exit(1)
+
+
+def cloudflare_ready():
+    """True when the Porkbun account is linked to a Cloudflare account."""
+    try:
+        res = call("/cloudflare/getConnection")
+    except ApiError as err:
+        if err.code == "SANDBOX_UNSUPPORTED":
+            print("Cloudflare cannot be simulated with a sandbox key; skipping that step.\n")
+            return False
+        raise
+    if res.get("connected"):
+        return True
+    url = res.get("connectUrl") or "https://porkbun.com/account/connectCloudflare"
+    sys.exit(
+        "Your Porkbun account is not linked to Cloudflare yet. Open this page in a\n"
+        f"browser, approve the access, then run the command again:\n  {url}"
+    )
+
+
+def cloudflare_connect(domains):
+    """Queue domains for the move: Porkbun creates the zone in the user's
+    Cloudflare account, copies the DNS records and repoints the nameservers."""
+    res = call("/cloudflare/connect", {"domains": domains}, idempotency_key=str(uuid.uuid4()))
+    for group in ("queued", "alreadyQueued", "skipped"):
+        for item in res.get(group) or []:
+            if isinstance(item, dict):
+                name = item.get("domain", "?")
+                why = item.get("reason") or item.get("message") or ""
+            else:
+                name, why = item, ""
+            print(f"Cloudflare {group}: {name} {why}".rstrip())
+    print(
+        "The move runs in the background: minutes for the zone, up to 72h for\n"
+        "Cloudflare to mark it active. Check with:  domain_bot.py cloudflare status <domain>"
+    )
+
+
+def cmd_cloudflare(args):
+    domains = expand([d for d in args.domains if "." in d], [])
+    if len(domains) != len(args.domains):
+        sys.exit("Give full domain names, e.g. example.xyz.")
+    if args.action == "connect":
+        if cloudflare_ready():
+            cloudflare_connect(domains)
+        return
+    for domain in domains:
+        try:
+            res = call(f"/cloudflare/get/{domain}")
+        except ApiError as err:
+            print(f"{domain}: {err}")
+            continue
+        row = res.get("domain") if isinstance(res.get("domain"), dict) else res
+        print(f"{domain}: {row.get('status')} {row.get('message') or ''}".rstrip())
+        ns = row.get("assignedNameservers") or row.get("nameservers")
+        if ns:
+            print("  nameservers: " + ", ".join(ns))
 
 
 def main():
@@ -320,8 +435,9 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     def common(sp):
-        sp.add_argument("names", nargs="+", help="keywords (foo) or full domains (foo.com)")
-        sp.add_argument("--tlds", default=DEFAULT_TLDS, help=f"TLDs tried for keywords (default {DEFAULT_TLDS})")
+        sp.add_argument("names", nargs="*", help="keywords (foo) or full domains (foo.com); none = random names")
+        sp.add_argument("--tlds", default=None, help=f"TLDs tried for keywords (default {DEFAULT_TLDS}; cheapest on sale for random names)")
+        sp.add_argument("--exclude-tlds", default="top", help="TLDs never picked for random names (default top)")
         sp.add_argument("--years", type=int, default=1, help="rank by total cost over this many years (default 1)")
 
     sp = sub.add_parser("prices", help="cheapest TLDs by list price")
@@ -341,13 +457,19 @@ def main():
     sp.add_argument("--max-renewal", type=money, default=None, help="skip domains whose yearly renewal is above this, USD")
     sp.add_argument("--budget", type=money, default=money("5"), help="max total spend for this run, USD (default 5)")
     sp.add_argument("--no-auto-renew", action="store_true", help="turn auto-renew off after registering")
+    sp.add_argument("--cloudflare", action="store_true", help="after registering, move the domain's DNS to your Cloudflare account")
     sp.add_argument("--confirm", action="store_true", help="really buy; without it nothing is charged")
     sp.add_argument("--agree-to-terms", action="store_true", help="you accept Porkbun's registration agreement")
     sp.add_argument("--log", default="purchases.jsonl", help="purchase log file (default purchases.jsonl)")
     sp.set_defaults(func=cmd_buy)
 
+    sp = sub.add_parser("cloudflare", help="move a registered domain's DNS to your Cloudflare account")
+    sp.add_argument("action", choices=["connect", "status"])
+    sp.add_argument("domains", nargs="+", help="full domain names")
+    sp.set_defaults(func=cmd_cloudflare)
+
     args = p.parse_args()
-    if args.years < 1:
+    if getattr(args, "years", 1) < 1:
         sys.exit("--years must be at least 1.")
     try:
         args.func(args)
