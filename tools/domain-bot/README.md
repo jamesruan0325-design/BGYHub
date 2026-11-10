@@ -1,0 +1,72 @@
+# 便宜域名机器人（Porkbun）
+
+在你给出的候选名字里找出最便宜且可注册的域名，并在你明确确认后通过
+[Porkbun 官方 API](https://porkbun.com/api/json/v3/documentation) 自动注册。
+
+- 只需要 Python 3，无第三方依赖。
+- **默认是试算**：不加 `--confirm` 不会花一分钱。
+- 有单价上限、总预算上限、单次最多 10 个域名三道保险。
+
+## 准备
+
+1. 注册 [Porkbun](https://porkbun.com) 账号，验证邮箱和手机号。
+2. 在 <https://porkbun.com/account/credit> 充值余额（API 注册从余额扣款，只绑卡不够）。
+3. 在 <https://porkbun.com/account/api> 创建 API key，并设置环境变量：
+
+```bash
+export PORKBUN_API_KEY=pk1_xxx
+export PORKBUN_SECRET_KEY=sk1_xxx
+```
+
+想先免费演练，可以在同一页面创建**沙盒 key**（`pk1_sb_` 开头）：所有操作都是模拟的，不会真的注册或扣款。
+
+密钥不要写进代码或提交到仓库。
+
+## 用法
+
+看哪些后缀最便宜（不需要 key）：
+
+```bash
+python3 domain_bot.py prices --years 3 --max-renewal 5
+```
+
+查候选名字的可用性和价格（关键词会自动拼上各个后缀，也可以直接写完整域名）：
+
+```bash
+python3 domain_bot.py check myname another-name myname.dev --tlds xyz,site,com
+```
+
+试算：看机器人会买哪个、花多少钱（不会真的购买）：
+
+```bash
+python3 domain_bot.py buy myname --tlds xyz,site,com --max-price 3 --max-renewal 20
+```
+
+确认购买：
+
+```bash
+python3 domain_bot.py buy myname --tlds xyz,site,com --max-price 3 --no-auto-renew --confirm --agree-to-terms
+```
+
+## `buy` 的参数
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `--tlds` | `xyz,site,online,…,com` | 关键词要尝试的后缀 |
+| `--count` | 1 | 本次注册几个（最多 10） |
+| `--max-price` | 3 | 单个域名首年价格上限（美元） |
+| `--max-renewal` | 不限 | 续费价高于此值的域名跳过 |
+| `--budget` | 5 | 本次总花费上限（美元） |
+| `--years` | 1 | 按 N 年总成本排序（首年价 + 续费价 ×(N-1)） |
+| `--no-auto-renew` | 关 | 注册后关闭自动续费，避免第二年被按高价续费 |
+| `--confirm` | 关 | 真的购买；不加就是试算 |
+| `--agree-to-terms` | 关 | 表示你同意 [Porkbun 的注册协议和条款](https://porkbun.com/legal)，`--confirm` 时必填 |
+| `--log` | `purchases.jsonl` | 购买记录文件 |
+
+## 注意事项
+
+- **看续费价**：很多后缀首年 1–2 美元，续费却要 15–30 美元。用 `--max-renewal`、`--years` 或 `--no-auto-renew` 控制。
+- **溢价域名买不了**：Porkbun 的 API 不能注册标记为 premium 的域名（例如约 1 美元的纯数字 `.xyz`），机器人会自动跳过，这类域名需要在网页上购买。
+- **账号侧限额**：Porkbun 对 API 默认有每月 100 美元的消费上限，可在 API 设置页调整。
+- **不要大量扫描**：只查不买的大批量查询会被 Porkbun 限流 24 小时。
+- 注册为注册局规定的最短年限（通常 1 年），WHOIS 隐私默认开启。
